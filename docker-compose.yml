@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:latest
     container_name: redis-server-movie_bocking-system
     ports:
       - "6379:6379"
