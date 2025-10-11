@@ -5,32 +5,27 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "account_roles", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"account_id", "role_id"}))
+@Table(
+        name = "account_roles",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"account_id", "role_id"}),
+        indexes = {
+                @Index(name = "idx_account_role_account_id", columnList = "account_id"),
+                @Index(name = "idx_account_role_role_id", columnList = "role_id")
+        }
+)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AccountRole {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
+public class AccountHasRole extends BaseEntity {
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
-    
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 }
