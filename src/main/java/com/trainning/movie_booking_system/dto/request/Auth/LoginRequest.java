@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.dto.request;
+package com.trainning.movie_booking_system.dto.request.Auth;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AccountLoginRequest {
+public class LoginRequest {
 
     @NotBlank
-    private String usernameOrEmail;
+    private String username;
 
     @NotBlank
     private String password;
