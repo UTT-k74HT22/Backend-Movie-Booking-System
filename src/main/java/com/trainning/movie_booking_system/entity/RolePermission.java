@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
                 @Index(name = "idx_role_permission_permission_id", columnList = "permission_id")
         }
 )
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
