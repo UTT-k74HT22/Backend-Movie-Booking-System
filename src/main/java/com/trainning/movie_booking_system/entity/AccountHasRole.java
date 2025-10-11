@@ -3,7 +3,6 @@ package com.trainning.movie_booking_system.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
@@ -15,7 +14,6 @@ import lombok.NoArgsConstructor;
                 @Index(name = "idx_account_role_role_id", columnList = "role_id")
         }
 )
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

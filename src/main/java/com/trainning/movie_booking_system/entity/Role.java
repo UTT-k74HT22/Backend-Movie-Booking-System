@@ -1,5 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
+import com.trainning.movie_booking_system.untils.enums.RoleType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +22,7 @@ import java.util.Set;
 public class Role extends BaseEntity {
     
     @Column(name = "name", nullable = false, unique = true)
-    private String name;
+    private RoleType name;
     
     @Column(name = "description")
     private String description;

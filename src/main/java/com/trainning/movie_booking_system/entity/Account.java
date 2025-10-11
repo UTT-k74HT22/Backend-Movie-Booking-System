@@ -29,13 +29,11 @@ public class Account extends BaseEntity {
     private String password;
     
     @Column(name = "email_verified", nullable = false)
-    @Builder.Default
-    private Boolean emailVerified = false;
+    private Boolean emailVerified;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    @Builder.Default
-    private UserStatus status = UserStatus.ACTIVE;
+    private UserStatus status;
 
     @OneToMany(mappedBy = "account",
             cascade = CascadeType.ALL,
