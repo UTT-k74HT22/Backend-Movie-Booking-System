@@ -4,7 +4,6 @@ import com.trainning.movie_booking_system.entity.Account;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
 import java.util.Collection;
 import java.util.List;
 
@@ -12,13 +11,7 @@ import java.util.List;
  * Custom UserDetails implementation cho Account entity
  * Chuyển đổi Account thành UserDetails để Spring Security có thể xử lý
  */
-public class CustomAccountDetails implements UserDetails {
-    
-    private final Account account;
-
-    public CustomAccountDetails(Account account) {
-        this.account = account;
-    }
+public record CustomAccountDetails(Account account) implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -26,7 +19,7 @@ public class CustomAccountDetails implements UserDetails {
         if (account.getAccountRoles() == null || account.getAccountRoles().isEmpty()) {
             return List.of(new SimpleGrantedAuthority("ROLE_USER"));
         }
-        
+
         return account.getAccountRoles().stream()
                 .map(accountRole -> new SimpleGrantedAuthority("ROLE_" + accountRole.getRole().getName()))
                 .toList();
@@ -49,8 +42,8 @@ public class CustomAccountDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return account.getStatus() != null && 
-               !account.getStatus().toString().equals("LOCKED");
+        return account.getStatus() != null &&
+                !account.getStatus().toString().equals("LOCKED");
     }
 
     @Override
@@ -60,14 +53,15 @@ public class CustomAccountDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return account.getStatus() != null && 
-               account.getStatus().toString().equals("ACTIVE");
+        return account.getStatus() != null &&
+                account.getStatus().toString().equals("ACTIVE");
     }
 
     /**
      * Getter để truy cập Account entity nếu cần
      */
-    public Account getAccount() {
+    @Override
+    public Account account() {
         return account;
     }
 }

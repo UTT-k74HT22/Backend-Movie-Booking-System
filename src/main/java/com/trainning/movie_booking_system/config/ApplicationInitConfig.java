@@ -40,7 +40,7 @@ public class ApplicationInitConfig {
     private void createRolesIfNotExists(RoleRepository roleRepository) {
         log.info("Creating roles if not exists...");
         
-        if (!roleRepository.findByName(RoleType.USER).isPresent()) {
+        if (roleRepository.findByName(RoleType.USER).isEmpty()) {
             Role userRole = Role.builder()
                     .name(RoleType.USER)
                     .description("Người dùng thông thường")
@@ -49,7 +49,7 @@ public class ApplicationInitConfig {
             log.info("Created role: USER");
         }
         
-        if (!roleRepository.findByName(RoleType.STAFF).isPresent()) {
+        if (roleRepository.findByName(RoleType.STAFF).isEmpty()) {
             Role staffRole = Role.builder()
                     .name(RoleType.STAFF)
                     .description("Nhân viên")
@@ -58,7 +58,7 @@ public class ApplicationInitConfig {
             log.info("Created role: STAFF");
         }
         
-        if (!roleRepository.findByName(RoleType.THEATER_MANAGEMENT).isPresent()) {
+        if (roleRepository.findByName(RoleType.THEATER_MANAGEMENT).isEmpty()) {
             Role theaterRole = Role.builder()
                     .name(RoleType.THEATER_MANAGEMENT)
                     .description("Quản lý rạp chiếu phim")
@@ -67,7 +67,7 @@ public class ApplicationInitConfig {
             log.info("Created role: THEATER_MANAGEMENT");
         }
         
-        if (!roleRepository.findByName(RoleType.ADMIN).isPresent()) {
+        if (roleRepository.findByName(RoleType.ADMIN).isEmpty()) {
             Role adminRole = Role.builder()
                     .name(RoleType.ADMIN)
                     .description("Quản trị viên hệ thống")

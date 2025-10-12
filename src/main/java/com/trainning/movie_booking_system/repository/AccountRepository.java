@@ -13,6 +13,10 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @EntityGraph(attributePaths = {"accountRoles", "accountRoles.role"})
     Optional<Account> findByUsername(String username);
 
-
+    /**
+     *
+     * @param email
+     * @return
+     */
     Optional<Account> findByEmail(String email);
 }

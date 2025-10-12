@@ -5,15 +5,24 @@ import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.entity.*;
 import com.trainning.movie_booking_system.repository.*;
+import com.trainning.movie_booking_system.security.CustomAccountDetails;
 import com.trainning.movie_booking_system.security.JwtProvider;
 import com.trainning.movie_booking_system.service.AuthService;
 import com.trainning.movie_booking_system.untils.enums.RoleType;
 import com.trainning.movie_booking_system.untils.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.naming.AuthenticationException;
+
+import static com.trainning.movie_booking_system.mapper.AuthMapper.toResponse;
 
 @Service
 @Slf4j
@@ -24,7 +33,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtProvider jwtProvider;  
+    private final JwtProvider jwtProvider;
+    private final AuthenticationManager authenticationManager;
 
     @Override
     @Transactional
@@ -80,22 +90,27 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         log.info("Starting login for username: {}", request.getUsername());
 
-        Account account = accountRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng"));
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        if (!passwordEncoder.matches(request.getPassword(), account.getPassword())) {
-            throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
+        CustomAccountDetails accountDetails = (CustomAccountDetails) authentication.getPrincipal();
+        Account account = accountDetails.account();
+
+        if (!account.isEmailVerified() || account.getStatus().equals(UserStatus.LOCKED)) {
+            throw new RuntimeException("Account is locked");
         }
 
-        if (account.getStatus() != UserStatus.ACTIVE) {
-            throw new RuntimeException("Tài khoản bị khóa hoặc chưa kích hoạt");
-        }
+        log.info("Authentication successful for username: {}", account.getUsername());
 
         String accessToken = jwtProvider.generateToken(account);
+        String refreshToken = jwtProvider.generateRefreshToken(account);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                    .build();
+        return toResponse(accessToken, refreshToken);
     }
 }
         

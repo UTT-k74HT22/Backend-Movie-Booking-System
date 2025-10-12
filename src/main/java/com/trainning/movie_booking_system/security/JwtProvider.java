@@ -11,8 +11,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
-
-//NOTE sửa lại nhé
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -31,14 +30,14 @@ public class JwtProvider {
         return Keys.hmacShaKeyFor(accessKey.getBytes());
     }
 
-    //public
     public String generateToken(Account account) {
+        String roles = account.getAccountRoles().stream()
+                .map(role -> "ROLE_" + role.getRole().getName())
+                .collect(Collectors.joining(","));
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("accountId", account.getId());
-        claims.put("username", account.getUsername());
-        claims.put("email", account.getEmail());
-        claims.put("status", account.getStatus().toString());
-        claims.put("emailVerified", account.getEmailVerified());
+        claims.put("roles", roles);
         return generateToken(claims, account);
     }
 
@@ -47,46 +46,22 @@ public class JwtProvider {
                 .setClaims(extraClaims)
                 .setSubject(account.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + (expiryMinutes * 60 * 1000)))
+                .setExpiration(new Date(System.currentTimeMillis() + ((long) expiryMinutes * 60 * 1000)))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    //fix lại
     public String generateRefreshToken(Account account) {
         return Jwts.builder()
                 .setSubject(account.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + (expiryDay * 24 * 60 * 60 * 1000)))
+                .setExpiration(new Date(System.currentTimeMillis() + ((long) expiryDay * 24 * 60 * 60 * 1000)))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // => xử lí build token: AccessToken và RefreshToken
-    //Chú ý public và private
-
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
-    }
-
-    public Long extractAccountId(String token) {
-        return extractClaim(token, claims -> claims.get("accountId", Long.class));
-    }
-
-    public String extractEmail(String token) {
-        return extractClaim(token, claims -> claims.get("email", String.class));
-    }
-
-    public String extractStatus(String token) {
-        return extractClaim(token, claims -> claims.get("status", String.class));
-    }
-
-    public Boolean extractEmailVerified(String token) {
-        return extractClaim(token, claims -> claims.get("emailVerified", Boolean.class));
-    }
-
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -94,16 +69,6 @@ public class JwtProvider {
         return claimsResolver.apply(claims);
     }
 
-    public Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    public Boolean validateToken(String token, Account account) {
-        final String username = extractUsername(token);
-        return (username.equals(account.getUsername()) && !isTokenExpired(token));
-    }
-
-    //validate token đã fix chuẩn HS256
     public boolean validateToken(String authToken) {
         try {
             Jwts.parserBuilder()
@@ -122,7 +87,6 @@ public class JwtProvider {
         }
         return false;
     }
-
 
     //========== PRIVATE METHOD ==========//
     private Claims extractAllClaims(String token) {

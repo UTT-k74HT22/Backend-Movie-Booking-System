@@ -4,6 +4,7 @@ import com.trainning.movie_booking_system.dto.response.system.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ public class TestController {
     /**
      * Endpoint bảo vệ - cần JWT token
      */
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
     @GetMapping("/user-info")
     public ResponseEntity<BaseResponse<String>> getUserInfo() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

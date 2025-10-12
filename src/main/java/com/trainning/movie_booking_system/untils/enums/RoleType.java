@@ -1,4 +1,8 @@
 package com.trainning.movie_booking_system.untils.enums;
+
+import lombok.Getter;
+
+@Getter
 public enum RoleType {
 
     /*
@@ -20,18 +24,6 @@ public enum RoleType {
         this.code = code;
         this.description = description;
         this.level = level;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public int getLevel() {
-        return level;
     }
 
     // Tiện ích: lấy RoleType từ level

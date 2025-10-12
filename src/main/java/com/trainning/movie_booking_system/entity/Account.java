@@ -29,7 +29,7 @@ public class Account extends BaseEntity {
     private String password;
     
     @Column(name = "email_verified", nullable = false)
-    private Boolean emailVerified;
+    private boolean emailVerified;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -39,11 +39,6 @@ public class Account extends BaseEntity {
             cascade = CascadeType.ALL,
             fetch = FetchType.LAZY,
             orphanRemoval = true)
-
-/*  đảm bảo khi build vẫn gán giá trị mặc định cho accountRoles để tránh lỗi
-NullPointerException khi thêm vai trò mới vào tài khoản.
-*
-* */
     @Builder.Default
     private Set<AccountHasRole> accountRoles = new java.util.HashSet<>();
 }

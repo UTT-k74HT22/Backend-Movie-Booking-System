@@ -8,7 +8,6 @@ import com.trainning.movie_booking_system.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,56 +20,27 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * Đăng ký tài khoản mới
+     * User sử dụng đăng kí tài khooản mới
+     * @param request thông tin cá nhân
+     * @return message
      */
     @PostMapping("/register")
     public ResponseEntity<BaseResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
-        try {
-            authService.register(request);
-            return ResponseEntity.ok(BaseResponse.<String>builder()
-                    .success(true)
-                    .message("Đăng ký thành công")
-                    .data("Tài khoản đã được tạo thành công")
-                    .build());
-        } catch (Exception e) {
-            log.error("Registration failed: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(BaseResponse.<String>builder()
-                    .success(false)
-                    .message(e.getMessage())
-                    .build());
-        }
+        log.info("[AUTH] API register request: {}", request);
+        authService.register(request);
+        return ResponseEntity.ok(BaseResponse.success());
     }
 
-    /**
-     * Đăng nhập
-     */
+
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            AuthResponse authResponse = authService.login(request);
-            return ResponseEntity.ok(BaseResponse.<AuthResponse>builder()
-                    .success(true)
-                    .message("Đăng nhập thành công")
-                    .data(authResponse)
-                    .build());
-        } catch (Exception e) {
-            log.error("Login failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(BaseResponse.<AuthResponse>builder()
-                    .success(false)
-                    .message(e.getMessage())
-                    .build());
-        }
+        log.info("[AUTH] API login request: {}", request);
+        return ResponseEntity.ok(BaseResponse.success(authService.login(request)));
     }
 
-    /**
-     * Test endpoint - chỉ dành cho user đã đăng nhập
-     */
-    @GetMapping("/test")
+    @GetMapping("/me")
     public ResponseEntity<BaseResponse<String>> test() {
-        return ResponseEntity.ok(BaseResponse.<String>builder()
-                .success(true)
-                .message("JWT authentication thành công!")
-                .data("Bạn đã đăng nhập thành công")
-                .build());
+        log.info("[AUTH] API test request");
+        return ResponseEntity.ok(BaseResponse.success());
     }
 }
