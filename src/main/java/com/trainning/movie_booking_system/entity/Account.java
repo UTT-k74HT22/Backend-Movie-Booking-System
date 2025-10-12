@@ -39,5 +39,11 @@ public class Account extends BaseEntity {
             cascade = CascadeType.ALL,
             fetch = FetchType.LAZY,
             orphanRemoval = true)
-    private Set<AccountHasRole> accountRoles;
+
+/*  đảm bảo khi build vẫn gán giá trị mặc định cho accountRoles để tránh lỗi
+NullPointerException khi thêm vai trò mới vào tài khoản.
+*
+* */
+    @Builder.Default
+    private Set<AccountHasRole> accountRoles = new java.util.HashSet<>();
 }

@@ -103,10 +103,13 @@ public class JwtProvider {
         return (username.equals(account.getUsername()) && !isTokenExpired(token));
     }
 
-    //validate chuẩn lại
+    //validate token đã fix chuẩn HS256
     public boolean validateToken(String authToken) {
         try {
-            Jwts.parser().setSigningKey(accessKey).parseClaimsJws(authToken);
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(authToken);
             return true;
         } catch (MalformedJwtException ex) {
             log.error("Invalid JWT token");

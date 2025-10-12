@@ -1,9 +1,7 @@
 package com.trainning.movie_booking_system.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(
@@ -14,7 +12,9 @@ import lombok.NoArgsConstructor;
                 @Index(name = "idx_account_role_role_id", columnList = "role_id")
         }
 )
+@Getter
 @Builder
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class AccountHasRole extends BaseEntity {

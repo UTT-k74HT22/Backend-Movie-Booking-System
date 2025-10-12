@@ -19,12 +19,24 @@ public class RegisterRequest {
     private String username;
 
     @NotBlank(message = "Email not blank")
-    @Email(message = "Email.....")
+    @Email(message = "Email has invalid format")
     private String email;
 
     @NotBlank(message = "Password not blank")
-    @Size(min = 6, max = 100, message = "Password,......")
+    @Size(min = 6, max = 100, message = "Password must be 6 characters long")
     private String password;
+
+    @NotBlank(message = "First name not blank")
+    @Size(min = 2, max = 50, message = "First name must be 2 characters long")
+    private String firstName;
+
+    @NotBlank(message = "Last name not blank")
+    @Size(min = 2, max = 50, message = "Last name must be 2 characters long")
+    private String lastName;
+
+    @NotBlank(message = "Phone number not blank")
+    @Size(min = 10, max = 15, message = "Phone number must be 10 characters long")
+    private String phoneNumber;
 }
 
 

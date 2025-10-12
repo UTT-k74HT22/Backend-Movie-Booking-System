@@ -20,7 +20,10 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Role extends BaseEntity {
-    
+    /*
+    * Bổ xung Enum để đúng với dữ liệu truyền vảo kiểu string
+    * */
+    @Enumerated(EnumType.STRING)
     @Column(name = "name", nullable = false, unique = true)
     private RoleType name;
     
