@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.exception;
 
-import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
+import com.trainning.movie_booking_system.dto.response.system.BaseResponse;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
