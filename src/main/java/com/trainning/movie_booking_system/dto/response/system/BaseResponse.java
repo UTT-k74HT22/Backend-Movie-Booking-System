@@ -1,6 +1,5 @@
 package com.trainning.movie_booking_system.dto.response.system;
 
-
 import lombok.Builder;
 import lombok.Getter;
 import java.time.LocalDateTime;
