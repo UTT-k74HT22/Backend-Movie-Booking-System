@@ -3,7 +3,7 @@ package com.trainning.movie_booking_system.controller;
 import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
-import com.trainning.movie_booking_system.dto.response.system.BaseResponse;
+import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

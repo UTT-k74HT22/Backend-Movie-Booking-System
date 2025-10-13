@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.controller;
 
-import com.trainning.movie_booking_system.dto.response.system.BaseResponse;
+import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
