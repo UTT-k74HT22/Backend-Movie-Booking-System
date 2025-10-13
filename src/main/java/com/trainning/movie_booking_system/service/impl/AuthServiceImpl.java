@@ -4,6 +4,8 @@ import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.entity.*;
+import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.repository.*;
 import com.trainning.movie_booking_system.security.CustomAccountDetails;
 import com.trainning.movie_booking_system.security.JwtProvider;
@@ -42,11 +44,11 @@ public class AuthServiceImpl implements AuthService {
         log.info("Starting registration for username: {}", request.getUsername());
 
         if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Username đã tồn tại: " + request.getUsername());
+            throw new BadRequestException("Username đã tồn tại: " + request.getUsername());
         }
 
         if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email đã tồn tại: " + request.getEmail());
+            throw new BadRequestException("Email đã tồn tại: " + request.getEmail());
         }
 
         Account account = Account.builder()
