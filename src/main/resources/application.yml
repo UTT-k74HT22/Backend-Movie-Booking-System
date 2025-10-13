@@ -37,6 +37,19 @@ spring:
         order_inserts: true
         order_updates: true
 
+  #Mail config
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: dohoan25112004@gmail.com
+    password: dxbu jqon lyrt tckw
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   # JACKSON CONFIGURATION
   jackson:
     serialization:
