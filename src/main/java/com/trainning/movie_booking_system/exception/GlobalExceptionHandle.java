@@ -16,6 +16,7 @@ import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
@@ -69,6 +70,24 @@ public class GlobalExceptionHandle {
         log.error("[ConstraintViolation] {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(BaseResponse.failure("Validation failed", ex.getMessage()));
+    }
+
+    // Lỗi validate tham số phương thức (vd: @RequestParam @Email, @NotBlank)
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<?> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getAllValidationResults().forEach(result -> {
+            String paramName = result.getMethodParameter() != null
+                    ? result.getMethodParameter().getParameterName()
+                    : "parameter";
+            String message = result.getResolvableErrors().isEmpty()
+                    ? "Validation failure"
+                    : result.getResolvableErrors().get(0).getDefaultMessage();
+            errors.put(paramName, message);
+        });
+        log.error("[HandlerMethodValidation] {}", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(BaseResponse.failure("Validation failed", errors));
     }
 
     // Lỗi request method không hỗ trợ (vd: POST -> GET)

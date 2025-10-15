@@ -76,6 +76,9 @@ jwt:
   expiryMinutes: 5
   expiryDay: 14
   accessKey: p1zs6HE4bebUL6aVjJhSEtj/Bp4rhQPK3vUR2gpcA06muNhYO77Z9kzb3U5sDXBkdpEZwECJfm0tNuDRiVu29g==
+  access-token-expiry-minutes: 30 #minutes
+  refresh-token-expiry-days: 1  #days
+
 
 
 # LOGGING CONFIGURATION

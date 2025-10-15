@@ -45,6 +45,9 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
+            "/api/auth/verify-otp",
+            "/api/auth/resend-otp",
+            "api/auth/refresh-token",
             "/webjars/**"
     };
 

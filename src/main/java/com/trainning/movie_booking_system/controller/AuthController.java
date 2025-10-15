@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -43,4 +47,36 @@ public class AuthController {
         log.info("[AUTH] API test request");
         return ResponseEntity.ok(BaseResponse.success());
     }
+    /*
+    * khi đăng kí xong thì verify email bằng api này gồm /verify?email=&otp=
+    *
+    * */
+    @PostMapping("/verify-otp")
+    public ResponseEntity<BaseResponse<String>> verifyOtp(
+            @RequestParam @Email String email,
+            @RequestParam @NotBlank String otp
+    ) {
+        log.info("[AUTH] API verify otp request for email: {}", email);
+        authService.verifyOtp(email, otp);
+        return ResponseEntity.ok(BaseResponse.success("Email verified successfully"));
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<BaseResponse<String>> resendOtp(
+            @RequestParam @Email String email
+    ) {
+        log.info("[AUTH] API resend otp request for email: {}", email);
+        authService.resendOtp(email);
+        return ResponseEntity.ok(BaseResponse.success("OTP resent successfully"));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<Map<String, String>> refreshToken(@RequestHeader("Authorization") String refreshTokenHeader) {
+        String refreshToken = refreshTokenHeader.replace("Bearer ", "");
+        Map<String, String> tokens = authService.refreshToken(refreshToken);
+        return ResponseEntity.ok(tokens);
+    }
+
+
+
 }
