@@ -2,14 +2,15 @@ package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
+import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.entity.*;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.repository.*;
 import com.trainning.movie_booking_system.security.CustomAccountDetails;
 import com.trainning.movie_booking_system.security.JwtProvider;
-import com.trainning.movie_booking_system.service.AuthService;
-import com.trainning.movie_booking_system.service.MailService;
+import com.trainning.movie_booking_system.service.*;
+import com.trainning.movie_booking_system.untils.enums.OtpType;
 import com.trainning.movie_booking_system.untils.enums.RoleType;
 import com.trainning.movie_booking_system.untils.enums.UserStatus;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -22,14 +23,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
-
-
+import java.util.concurrent.TimeUnit;
 import static com.trainning.movie_booking_system.mapper.AuthMapper.toResponse;
 
 @Service
@@ -43,38 +39,24 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final AuthenticationManager authenticationManager;
-    private final MailService mailService;
+    private final RedisService redisService;
+    private final OtpService otpService;
 
     @Override
     @Transactional
     public void register(RegisterRequest request) {
         log.info("Starting registration for username: {}", request.getUsername());
 
-        if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new BadRequestException("Username already exists: " + request.getUsername());
-        }
+        validateField(request);
 
-        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new BadRequestException("Email already exists: " + request.getEmail());
-        }
-
-        Account account = Account.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .status(UserStatus.ACTIVE)
-                .emailVerified(false)
-                .build();
+        Account account = buildAccount(request);
 
         // Lấy role mặc định USER
         Role userRole = roleRepository.findByName(RoleType.USER)
                 .orElseThrow(() -> new RuntimeException("Role USER not found"));
 
         // Tạo bản ghi trung gian
-        AccountHasRole accountRole = AccountHasRole.builder()
-                .account(account)
-                .role(userRole)
-                .build();
+        AccountHasRole accountRole = buildAccountRole(account, userRole);
 
         // Gắn role vào account (accountRoles đã được khởi tạo trong entity)
         account.getAccountRoles().add(accountRole);
@@ -84,132 +66,55 @@ public class AuthServiceImpl implements AuthService {
         log.info("Account created successfully with ID: {}", savedAccount.getId());
 
         // Tạo profile User
-        User user = User.builder()
-                .account(savedAccount)
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .phoneNumber(request.getPhoneNumber())
-                .build();
+        User user = buildProfileUser(request, savedAccount);
 
         userRepository.save(user);
         log.info("User profile created successfully for account: {}", savedAccount.getUsername());
 
-        // Generate 6-digit OTP and expiry (e.g., 10 minutes)
-        String otp = String.format("%06d", new Random().nextInt(1_000_000));
-        log.info("[DEV] Generated OTP value for {} is {}", savedAccount.getEmail(), otp);
-        savedAccount.setOtpCode(otp);
-        savedAccount.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-        savedAccount.setLastOtpSentAt(LocalDateTime.now());
-        accountRepository.save(savedAccount);
-        log.info("Generated OTP for {}", savedAccount.getEmail());
+        otpService.sendOtp(request.getEmail(), OtpType.REGISTER);
 
-        // Send OTP về email đăng kí
+        log.info("Registration successful for {}, awaiting OTP verification", request.getEmail());
+    }
 
-        mailService.sendSimpleEmailAsync(
-                savedAccount.getEmail(),
-                "Your verification OTP",
-                "Your OTP is: " + otp + " (valid for 10 minutes)"
-        );
+    /**
+     * Active email
+     *
+     * @param request thông tin request
+     */
+    @Override
+    @Transactional
+    public void activateAccount(VerifyOtpRequest request) {
+        log.info("Activating account for email: {}", request.getEmail());
+
+        boolean isValid = otpService.verifyOtp(request.getEmail(), request.getOtp(), OtpType.REGISTER);
+        if (!isValid) {
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+
+        Account account = accountRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Account not found"));
+
+        account.setEmailVerified(true);
+        accountRepository.save(account);
+
+        otpService.deleteOtp(request.getEmail(), OtpType.REGISTER);
+
+        log.info("Account {} activated successfully", account.getUsername());
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
         log.info("Starting login for username: {}", request.getUsername());
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        CustomAccountDetails accountDetails = (CustomAccountDetails) authentication.getPrincipal();
-        Account account = accountDetails.account();
-
-        if (!account.isEmailVerified() || account.getStatus().equals(UserStatus.LOCKED)) {
-            throw new RuntimeException("Account is locked");
-        }
-
-        log.info("Authentication successful for username: {}", account.getUsername());
+        Account account = authenticationAndValidateAccount(request);
 
         String accessToken = jwtProvider.generateToken(account);
         String refreshToken = jwtProvider.generateRefreshToken(account);
+        String key = "refreshToken:" + account.getUsername();
+        long ttl = (jwtProvider.getExpiration(refreshToken).getTime() - System.currentTimeMillis()) / 1000;
+        redisService.set(key, refreshToken, ttl, TimeUnit.SECONDS);
 
         return toResponse(accessToken, refreshToken);
-    }
-    /*
-    * khi email dc gửi về -> email dc verify hay ko bằng mã otp 
-    *
-    * */
-    @Override
-    @Transactional
-    public void verifyOtp(String email, String otp) {
-        String providedOtp = otp != null ? otp.trim() : "";
-        Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException("Email not found"));
-
-        if (account.isEmailVerified()) {
-            return;
-        }
-
-        if (account.getOtpCode() == null || account.getOtpExpiresAt() == null) {
-            throw new BadRequestException("OTP not requested");
-        }
-
-        if (account.getOtpExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("OTP expired");
-        }
-
-        log.info("[DEV] Verifying OTP: provided='{}', expected='{}', expiresAt='{}'", providedOtp, account.getOtpCode(), account.getOtpExpiresAt());
-
-        if (!account.getOtpCode().equals(providedOtp)) {
-            throw new BadRequestException("Invalid OTP");
-        }
-
-        account.setEmailVerified(true);
-        account.setOtpCode(null);
-        account.setOtpExpiresAt(null);
-        accountRepository.save(account);
-        log.info("Email verified via OTP for account: {}", account.getUsername());
-    }
-
-
-    /*
-     *   Thực hiện gửi lại mã otp trong trường hợp mã otp hết hạn hoặc ko thấy mã otp
-     * */
-    @Override
-    @Transactional
-    public void resendOtp(String email) {
-        Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new BadRequestException("Email not found"));
-
-        if (account.isEmailVerified()) {
-            throw new BadRequestException("Email already verified");
-        }
-
-        // Kiểm tra thời gian gửi lại
-        if (account.getLastOtpSentAt() != null) {
-            Duration duration = Duration.between(account.getLastOtpSentAt(), LocalDateTime.now());
-            if (duration.getSeconds() < 60) { // < 1 phút
-                throw new BadRequestException("Please wait 1 minute before requesting another OTP");
-            }
-        }
-        // Generate new 6-digit OTP and expiry (e.g., 10 minutes)
-        String otp = String.format("%06d", new Random().nextInt(1_000_000));
-        log.info("[DEV] Resent OTP value for {} is {}", account.getEmail(), otp);
-        account.setOtpCode(otp);
-        account.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-        account.setLastOtpSentAt(LocalDateTime.now());
-        accountRepository.save(account);
-        log.info("Resent OTP for {}", account.getEmail());
-
-        // Send OTP về email đăng kí
-        mailService.sendSimpleEmailAsync(
-                account.getEmail(),
-                "Your verification OTP",
-                "Your OTP is: " + otp + " (valid for 10 minutes)"
-        );
     }
 
     public Map<String, String> refreshToken(String refreshToken) {
@@ -243,6 +148,62 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    //========== PRIVATE METHOD =========//
+    private void validateField(RegisterRequest request) {
+        if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new BadRequestException("Username already exists: " + request.getUsername());
+        }
+
+        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new BadRequestException("Email already exists: " + request.getEmail());
+        }
+    }
+
+    private User buildProfileUser(RegisterRequest request, Account savedAccount) {
+        return User.builder()
+                .account(savedAccount)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .build();
+    }
+
+    private AccountHasRole buildAccountRole(Account account, Role userRole) {
+        return AccountHasRole.builder()
+                .account(account)
+                .role(userRole)
+                .build();
+    }
+
+    private Account buildAccount(RegisterRequest request) {
+        return Account.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .status(UserStatus.ACTIVE)
+                .emailVerified(false)
+                .build();
+    }
+
+    private Account authenticationAndValidateAccount(LoginRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        CustomAccountDetails accountDetails = (CustomAccountDetails) authentication.getPrincipal();
+        Account account = accountDetails.account();
+
+        if (!account.isEmailVerified() || account.getStatus().equals(UserStatus.LOCKED)) {
+            throw new RuntimeException("Account is locked");
+        }
+
+        log.info("Authentication successful for username: {}", account.getUsername());
+        return account;
+    }
 }
 
 

@@ -129,4 +129,9 @@ public class JwtProvider {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
+    //Get expiration
+    public Date getExpiration(String token) {
+         return extractClaim(token, Claims::getExpiration);
+    }
 }

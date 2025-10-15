@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import java.time.LocalDateTime;
 import java.util.Set;
 
 @Entity
@@ -46,21 +45,6 @@ public class Account extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private UserStatus status;
-    /*
-    * khi rigister xong se gui 1 ma otp ve email de xac thuc
-    * */
-    @Setter
-    @Column(name = "otp_code")
-    private String otpCode;
-    /*
-    * Mục đích private LocalDateTime lastOtpSentAt;
-        để lưu thời điểm opt dc gửi đi lần cuối, tránh việc user spam gửi otp liên tục
-     * */
-    @Setter
-    @Column(name = "otp_expires_at")
-    private LocalDateTime otpExpiresAt;
-    @Setter
-    private LocalDateTime lastOtpSentAt;
 
     @OneToMany(mappedBy = "account",
             cascade = CascadeType.ALL,
@@ -68,7 +52,4 @@ public class Account extends BaseEntity {
             orphanRemoval = true)
     @Builder.Default
     private Set<AccountHasRole> accountRoles = new java.util.HashSet<>();
-
-
-
 }

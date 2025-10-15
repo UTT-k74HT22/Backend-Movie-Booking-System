@@ -2,6 +2,7 @@ package com.trainning.movie_booking_system.controller;
 
 import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
+import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.AuthService;
@@ -10,9 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-
 import java.util.Map;
 
 @RestController
@@ -30,15 +28,22 @@ public class AuthController {
      */
     @PostMapping("/register")
     public ResponseEntity<BaseResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("[AUTH] API register request: {}", request);
+        log.info("[AUTH] API register username: {}", request.getUsername());
         authService.register(request);
         return ResponseEntity.ok(BaseResponse.success());
+    }
+
+    @PostMapping("/activate")
+    public ResponseEntity<?> activate(@RequestBody @Valid VerifyOtpRequest request) {
+        log.info("[AUTH] API activate email: {}", request.getEmail());
+        authService.activateAccount(request);
+        return ResponseEntity.ok(BaseResponse.success("Account activated successfully"));
     }
 
 
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        log.info("[AUTH] API login request: {}", request);
+        log.info("[AUTH] API login username: {}", request.getUsername());
         return ResponseEntity.ok(BaseResponse.success(authService.login(request)));
     }
 
@@ -47,28 +52,6 @@ public class AuthController {
         log.info("[AUTH] API test request");
         return ResponseEntity.ok(BaseResponse.success());
     }
-    /*
-    * khi đăng kí xong thì verify email bằng api này gồm /verify?email=&otp=
-    *
-    * */
-    @PostMapping("/verify-otp")
-    public ResponseEntity<BaseResponse<String>> verifyOtp(
-            @RequestParam @Email String email,
-            @RequestParam @NotBlank String otp
-    ) {
-        log.info("[AUTH] API verify otp request for email: {}", email);
-        authService.verifyOtp(email, otp);
-        return ResponseEntity.ok(BaseResponse.success("Email verified successfully"));
-    }
-
-    @PostMapping("/resend-otp")
-    public ResponseEntity<BaseResponse<String>> resendOtp(
-            @RequestParam @Email String email
-    ) {
-        log.info("[AUTH] API resend otp request for email: {}", email);
-        authService.resendOtp(email);
-        return ResponseEntity.ok(BaseResponse.success("OTP resent successfully"));
-    }
 
     @PostMapping("/refresh-token")
     public ResponseEntity<Map<String, String>> refreshToken(@RequestHeader("Authorization") String refreshTokenHeader) {
@@ -76,7 +59,4 @@ public class AuthController {
         Map<String, String> tokens = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(tokens);
     }
-
-
-
 }
