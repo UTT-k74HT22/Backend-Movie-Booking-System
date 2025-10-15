@@ -107,7 +107,6 @@ public class AuthServiceImpl implements AuthService {
         log.info("Starting login for username: {}", request.getUsername());
 
         Account account = authenticationAndValidateAccount(request);
-
         String accessToken = jwtProvider.generateToken(account);
         String refreshToken = jwtProvider.generateRefreshToken(account);
         String key = "refreshToken:" + account.getUsername();
@@ -117,33 +116,53 @@ public class AuthServiceImpl implements AuthService {
         return toResponse(accessToken, refreshToken);
     }
 
-    public Map<String, String> refreshToken(String refreshToken) {
-        Map<String, String> response = new HashMap<>();
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
+        log.info("Starting refresh token process");
 
-        if (!jwtProvider.validateToken(refreshToken)) {
+        log.info("Refresh Token: {}", refreshToken);
+
+        String cleanToken = refreshToken.trim().replace("\"", "");
+
+        log.info("Refresh Token Clean: {}", cleanToken);
+
+        if (!jwtProvider.validateToken(cleanToken)) {
             throw new BadRequestException("Invalid refresh token");
         }
 
         try {
-            String username = jwtProvider.extractUsername(refreshToken);
+            String username = jwtProvider.extractUsername(cleanToken);
+            log.debug("Extracted username from refresh token: {}", username);
 
             Account account = accountRepository.findByUsername(username)
                     .orElseThrow(() -> new BadRequestException("User not found"));
 
-            if (!jwtProvider.isTokenValidForAccount(refreshToken, account)) {
-                throw new BadRequestException("Token does not match user");
+            String redisKey = "refreshToken:" + username;
+            String storedRefreshToken = redisService.get(redisKey).toString();
+
+            if (storedRefreshToken == null) {
+                throw new BadRequestException("Invalid or expired refresh token");
             }
 
+            storedRefreshToken = storedRefreshToken.trim().replace("\"", "");
+
+            if (!storedRefreshToken.equals(cleanToken)) {
+                throw new BadRequestException("Invalid or expired refresh token");
+            }
+
+            if (!jwtProvider.isTokenValidForAccount(cleanToken, account)) {
+                throw new BadRequestException("Token does not match user");
+            }
             String newAccessToken = jwtProvider.generateToken(account);
+            log.info("Refreshed access token successfully for user: {}", username);
 
-            response.put("accessToken", newAccessToken);
-            response.put("refreshToken", refreshToken); // Giữ nguyên refresh token cũ
-
-            return response;
+            return toResponse(newAccessToken, cleanToken);
 
         } catch (ExpiredJwtException e) {
+            log.warn("Refresh token expired");
             throw new BadRequestException("Refresh token expired");
         } catch (Exception e) {
+            log.error("Failed to refresh token", e);
             throw new BadRequestException("Failed to refresh token");
         }
     }

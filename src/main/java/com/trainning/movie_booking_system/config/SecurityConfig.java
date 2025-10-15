@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.config;
 
+import com.trainning.movie_booking_system.security.CustomUserDetailsService;
 import com.trainning.movie_booking_system.security.JwtFilter;
-import com.trainning.movie_booking_system.service.impl.AccountDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,9 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 import java.util.List;
-
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
@@ -32,7 +30,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    private final AccountDetailsServiceImpl accountDetailsService;
+    private final CustomUserDetailsService customUserDetailsService;
     private final JwtFilter jwtFilter;
 
     public static final String[] PUBLIC_URL = {
@@ -60,7 +58,7 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(accountDetailsService);
+        authProvider.setUserDetailsService(customUserDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }

@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.controller;
 
 import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
+import com.trainning.movie_booking_system.dto.request.Auth.RefreshTokenRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
 import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
@@ -11,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -33,30 +33,47 @@ public class AuthController {
         return ResponseEntity.ok(BaseResponse.success());
     }
 
+    /**
+     * Active tài khoản
+     * @param request thông tin request
+     * @return success
+     */
     @PostMapping("/activate")
     public ResponseEntity<?> activate(@RequestBody @Valid VerifyOtpRequest request) {
         log.info("[AUTH] API activate email: {}", request.getEmail());
         authService.activateAccount(request);
-        return ResponseEntity.ok(BaseResponse.success("Account activated successfully"));
+        return ResponseEntity.ok(BaseResponse.success());
     }
 
-
+    /**
+     * Login
+     * @param request username/password
+     * @return access and refresh token
+     */
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         log.info("[AUTH] API login username: {}", request.getUsername());
         return ResponseEntity.ok(BaseResponse.success(authService.login(request)));
     }
 
+    /**
+     * Test authen
+     * @return success
+     */
     @GetMapping("/me")
     public ResponseEntity<BaseResponse<String>> test() {
         log.info("[AUTH] API test request");
         return ResponseEntity.ok(BaseResponse.success());
     }
 
+    /**
+     * Refresh token
+     * @param request refresh token
+     * @return new access token
+     */
     @PostMapping("/refresh-token")
-    public ResponseEntity<Map<String, String>> refreshToken(@RequestHeader("Authorization") String refreshTokenHeader) {
-        String refreshToken = refreshTokenHeader.replace("Bearer ", "");
-        Map<String, String> tokens = authService.refreshToken(refreshToken);
-        return ResponseEntity.ok(tokens);
+    public ResponseEntity<?> refreshToken(@RequestBody @Valid RefreshTokenRequest request) {
+        log.info("[AUTH] API refresh");
+        return ResponseEntity.ok(BaseResponse.success(authService.refreshToken(request.getRefreshToken())));
     }
 }
