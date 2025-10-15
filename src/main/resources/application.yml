@@ -79,7 +79,11 @@ jwt:
   access-token-expiry-minutes: 30 #minutes
   refresh-token-expiry-days: 1  #days
 
-
+otp:
+  ttl-minutes: 5              # Thời gian sống của OTP (phút)
+  resend-limit-seconds: 60    # Thời gian giữa 2 lần gửi lại OTP (giây)
+  count-ttl-hours: 24         # Thời gian reset đếm số lần gửi (giờ)
+  max-send-per-day: 5         # Giới hạn gửi OTP tối đa mỗi ngày
 
 # LOGGING CONFIGURATION
 logging:
