@@ -64,6 +64,12 @@ spring:
       max-file-size: 20MB
       max-request-size: 20MB
 
+  #Redis config
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
 
 # JWT CONFIGURATION
 jwt:
