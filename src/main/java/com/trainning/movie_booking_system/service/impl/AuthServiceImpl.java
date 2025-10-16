@@ -8,6 +8,7 @@ import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.entity.*;
 import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.exception.InternalServerErrorException;
 import com.trainning.movie_booking_system.repository.*;
 import com.trainning.movie_booking_system.security.CustomAccountDetails;
 import com.trainning.movie_booking_system.security.JwtProvider;
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -103,14 +105,48 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         log.info("Starting login for username: {}", request.getUsername());
 
-        Account account = authenticationAndValidateAccount(request);
-        String accessToken = jwtProvider.generateToken(account);
-        String refreshToken = jwtProvider.generateRefreshToken(account);
-        String key = buildRedisKey(account.getUsername());
-        long ttl = (jwtProvider.getExpiration(refreshToken).getTime() - System.currentTimeMillis()) / 1000;
-        redisService.set(key, refreshToken, ttl, TimeUnit.SECONDS);
+        try {
+            // B1: Xác thực tài khoản
+            Account account = authenticationAndValidateAccount(request);
+            log.info("Account {} authenticated successfully", account.getUsername());
 
-        return toResponse(accessToken, refreshToken);
+            // B2: Sinh JWT token
+            String accessToken;
+            String refreshToken;
+            try {
+                accessToken = jwtProvider.generateToken(account);
+                refreshToken = jwtProvider.generateRefreshToken(account);
+                log.debug("Tokens generated for user: {}", account.getUsername());
+            } catch (Exception e) {
+                log.error("Error generating tokens for {}: {}", account.getUsername(), e.getMessage(), e);
+                throw new InternalServerErrorException("Cannot generate JWT tokens");
+            }
+
+            // B3: Lưu refresh token vào Redis
+            try {
+                String key = buildRedisKey(account.getUsername());
+                long ttl = (jwtProvider.getExpiration(refreshToken).getTime() - System.currentTimeMillis()) / 1000;
+                redisService.set(key, refreshToken, ttl, TimeUnit.SECONDS);
+                log.debug("Saved refresh token in Redis for {} with TTL={}s", account.getUsername(), ttl);
+            } catch (Exception e) {
+                log.error("Redis error saving refresh token for {}: {}", account.getUsername(), e.getMessage(), e);
+                throw new InternalServerErrorException("Failed to store refresh token");
+            }
+
+            // B4: Trả về response
+            log.info("Login successful for username: {}", account.getUsername());
+            return toResponse(accessToken, refreshToken);
+
+        } catch (BadRequestException e) {
+            log.warn("Login failed (BadRequest) for {}: {}", request.getUsername(), e.getMessage());
+            throw e;
+        } catch (AuthenticationException e) {
+            log.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
+            throw new BadRequestException("Invalid username or password");
+        } catch (Exception e) {
+            log.error("Unexpected error during login for {}: {}", request.getUsername(), e.getMessage(), e);
+            throw new InternalServerErrorException("Unexpected error while logging in");
+        }
     }
 
     @Override
@@ -256,8 +292,12 @@ public class AuthServiceImpl implements AuthService {
         CustomAccountDetails accountDetails = (CustomAccountDetails) authentication.getPrincipal();
         Account account = accountDetails.account();
 
-        if (!account.isEmailVerified() || account.getStatus().equals(UserStatus.LOCKED)) {
-            throw new RuntimeException("Account is locked");
+        if (!account.isEmailVerified()) {
+            throw new BadRequestException("Email is not verified. Please verify your email first.");
+        }
+
+        if (!UserStatus.ACTIVE.equals(account.getStatus())) {
+            throw new BadRequestException("Account is not active");
         }
 
         log.info("Authentication successful for username: {}", account.getUsername());
@@ -297,14 +337,128 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+
+    /**
+     *FORGOT PASSWORD:
+     * 1. Validate email
+     * 2. Find account
+     * 3. Check account ACTIVE
+     * 4. Check email VERIFIED
+     * 5. Send OTP
+     * 6. Response: "OTP sent to email"
+     *
+     * */
     @Override
+    @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
+        log.info("forgotPassword for email: {}", request.getEmail());
+
+        //check validate email
+        if (StringUtils.isBlank(request.getEmail())){
+            throw new BadRequestException("Email is required");
+        }
+        //find account by email
+        Account account = accountRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> {
+                    log.warn("Account not found for email: {}", request.getEmail());
+                    return new BadRequestException("Email not found in system");
+                });
+        // check if email is verified and account is active
+        if (!UserStatus.ACTIVE.equals(account.getStatus())) {
+            log.warn("Inactive account trying forgot password: {}", account.getUsername());
+            throw new BadRequestException("Account is not active");
+        }
+        //send otp to email
+        try {
+            otpService.sendOtp(account.getEmail(), OtpType.FORGOT_PASSWORD);
+            log.info("Forgot password OTP sent to email: {}", account.getEmail());
+        }catch (Exception e) {
+            log.error("Failed to send forgot password OTP", e);
+            throw new BadRequestException("Failed to send OTP. Please try again later.");
+        }
 
     }
-
+    /**  * RESET PASSWORD:
+     * 1. Validations (email, otp, passwords)
+     * 2. Verify OTP
+     * 3. Find account
+     * 4. Update password (encode)
+     * 5. Delete OTP ← Cleanup
+     * 6. Delete refresh tokens ← Force re-login
+     * 7. Response: "Password reset success"*/
     @Override
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
+        log.info("Reset password request for email: {}", request.getEmail());
+        // ========== VALIDATIONS ==========
 
+        if (StringUtils.isBlank(request.getEmail())) {
+            throw new BadRequestException("Email is required");
+        }
+
+        if (StringUtils.isBlank(request.getOtp())) {
+            throw new BadRequestException("OTP is required");
+        }
+
+        if (StringUtils.isBlank(request.getNewPassword())) {
+            throw new BadRequestException("New password is required");
+        }
+
+        if (StringUtils.isBlank(request.getConfirmPassword())) {
+            throw new BadRequestException("Confirm password is required");
+        }
+
+        // Validate passwords match
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            log.warn("Password mismatch for email: {}", request.getEmail());
+            throw new BadRequestException("Passwords do not match");
+        }
+        // ========== VERIFY OTP ==========
+
+        boolean isValidOtp = otpService.verifyOtp(
+                request.getEmail(),
+                request.getOtp(),
+                OtpType.FORGOT_PASSWORD
+        );
+
+        if (!isValidOtp) {
+            log.warn("Invalid OTP for email: {}", request.getEmail());
+            throw new BadRequestException("Invalid or expired OTP");
+        }
+
+        // ========== UPDATE PASSWORD ==========
+
+        Account account = accountRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> {
+                    log.warn("Account not found during password reset: {}", request.getEmail());
+                    return new BadRequestException("Account not found");
+                });
+        // Encode and update password
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        account.setPassword(encodedPassword);
+        accountRepository.save(account);
+
+        log.info("Password updated successfully for account: {}", account.getId());
+
+        // ========== CLEANUP & INVALIDATE TOKENS ==========
+
+        //  Delete OTP from Redis
+        try {
+            otpService.deleteOtp(request.getEmail(), OtpType.FORGOT_PASSWORD);
+            log.debug("OTP deleted from Redis for email: {}", request.getEmail());
+        } catch (Exception e) {
+            log.warn("Failed to delete OTP, but password was reset successfully", e);
+        }
+
+        // Invalidate all refresh tokens (force user to login again)
+        String refreshTokenRedisKey = buildRedisKey(account.getUsername());
+        try {
+            redisService.delete(refreshTokenRedisKey);
+            log.debug("Refresh tokens invalidated for user: {}", account.getUsername());
+        } catch (Exception e) {
+            log.warn("Failed to invalidate refresh tokens, but password was reset successfully", e);
+        }
+
+        log.info("Password reset completed successfully for user: {}", account.getUsername());
     }
-
-}
+    }
