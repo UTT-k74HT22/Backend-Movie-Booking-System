@@ -1,15 +1,21 @@
 package com.trainning.movie_booking_system.controller;
 
 import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
+import com.trainning.movie_booking_system.dto.request.Auth.LogoutRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RefreshTokenRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
+import com.trainning.movie_booking_system.dto.request.Auth.ForgotPasswordRequest;
+import com.trainning.movie_booking_system.dto.request.Auth.ResetPasswordRequest;
 import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
+import com.trainning.movie_booking_system.dto.response.Auth.ApiResponse;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
+import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,5 +81,48 @@ public class AuthController {
     public ResponseEntity<?> refreshToken(@RequestBody @Valid RefreshTokenRequest request) {
         log.info("[AUTH] API refresh");
         return ResponseEntity.ok(BaseResponse.success(authService.refreshToken(request.getRefreshToken())));
+    }
+    /**
+        * Logout
+     * @param request refresh token
+     * @return message
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<?>> logout(
+            @Valid @RequestBody LogoutRequest request) {
+
+        try {
+            authService.logout(request.getRefreshToken());
+            log.info("User logged out successfully");
+
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Đăng xuất thành công")
+            );
+        } catch (BadRequestException e) {
+            log.warn("Logout failed: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error during logout", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Có lỗi xảy ra, vui lòng thử lại"));
+        }
+    }
+    /**
+    *  Forgot password
+    *
+    * */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<BaseResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        log.info("[AUTH] API forgot password for email: {}", request.getEmail());
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(BaseResponse.success());
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<BaseResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        log.info("[AUTH] API reset password for email: {}", request.getEmail());
+        authService.resetPassword(request);
+        return ResponseEntity.ok(BaseResponse.success());
     }
 }

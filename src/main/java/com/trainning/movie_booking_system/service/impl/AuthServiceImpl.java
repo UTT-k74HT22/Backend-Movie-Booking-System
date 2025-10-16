@@ -1,7 +1,9 @@
 package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.dto.request.Auth.LoginRequest;
+import com.trainning.movie_booking_system.dto.request.Auth.ForgotPasswordRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
+import com.trainning.movie_booking_system.dto.request.Auth.ResetPasswordRequest;
 import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.entity.*;
@@ -14,6 +16,7 @@ import com.trainning.movie_booking_system.untils.enums.OtpType;
 import com.trainning.movie_booking_system.untils.enums.RoleType;
 import com.trainning.movie_booking_system.untils.enums.UserStatus;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,8 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.HashMap;
-import java.util.Map;
+
 import java.util.concurrent.TimeUnit;
 import static com.trainning.movie_booking_system.mapper.AuthMapper.toResponse;
 
@@ -60,14 +62,9 @@ public class AuthServiceImpl implements AuthService {
 
         // Gắn role vào account (accountRoles đã được khởi tạo trong entity)
         account.getAccountRoles().add(accountRole);
-
-        // Lưu Account (cascade lưu cả AccountHasRole)
         Account savedAccount = accountRepository.save(account);
         log.info("Account created successfully with ID: {}", savedAccount.getId());
-
-        // Tạo profile User
         User user = buildProfileUser(request, savedAccount);
-
         userRepository.save(user);
         log.info("User profile created successfully for account: {}", savedAccount.getUsername());
 
@@ -109,7 +106,7 @@ public class AuthServiceImpl implements AuthService {
         Account account = authenticationAndValidateAccount(request);
         String accessToken = jwtProvider.generateToken(account);
         String refreshToken = jwtProvider.generateRefreshToken(account);
-        String key = "refreshToken:" + account.getUsername();
+        String key = buildRedisKey(account.getUsername());
         long ttl = (jwtProvider.getExpiration(refreshToken).getTime() - System.currentTimeMillis()) / 1000;
         redisService.set(key, refreshToken, ttl, TimeUnit.SECONDS);
 
@@ -120,51 +117,94 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refreshToken(String refreshToken) {
         log.info("Starting refresh token process");
 
-        log.info("Refresh Token: {}", refreshToken);
+        // Validate input
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BadRequestException("Refresh token is required");
+        }
 
-        String cleanToken = refreshToken.trim().replace("\"", "");
+        String cleanToken = cleanToken(refreshToken);
+        log.debug("Processing refresh token, length: {}", cleanToken.length());
 
-        log.info("Refresh Token Clean: {}", cleanToken);
-
+        // Validate token format and signature
         if (!jwtProvider.validateToken(cleanToken)) {
             throw new BadRequestException("Invalid refresh token");
         }
 
         try {
             String username = jwtProvider.extractUsername(cleanToken);
-            log.debug("Extracted username from refresh token: {}", username);
 
+            log.debug("Processing refresh token for user: {}", username);
+
+            // Find account
             Account account = accountRepository.findByUsername(username)
                     .orElseThrow(() -> new BadRequestException("User not found"));
 
-            String redisKey = "refreshToken:" + username;
-            String storedRefreshToken = redisService.get(redisKey).toString();
+            // Verify token matches stored token in Redis
+            verifyStoredRefreshToken(username, cleanToken);
 
-            if (storedRefreshToken == null) {
-                throw new BadRequestException("Invalid or expired refresh token");
-            }
-
-            storedRefreshToken = storedRefreshToken.trim().replace("\"", "");
-
-            if (!storedRefreshToken.equals(cleanToken)) {
-                throw new BadRequestException("Invalid or expired refresh token");
-            }
-
+            // Validate token belongs to this account
             if (!jwtProvider.isTokenValidForAccount(cleanToken, account)) {
+                log.warn("Token mismatch for user: {}", username);
                 throw new BadRequestException("Token does not match user");
             }
+
+            // Generate new access token
             String newAccessToken = jwtProvider.generateToken(account);
-            log.info("Refreshed access token successfully for user: {}", username);
+            log.info("Access token refreshed successfully for user: {}", username);
 
             return toResponse(newAccessToken, cleanToken);
 
         } catch (ExpiredJwtException e) {
-            log.warn("Refresh token expired");
+            log.warn("Refresh token has expired");
             throw new BadRequestException("Refresh token expired");
+        } catch (BadRequestException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to refresh token", e);
+            log.error("Unexpected error during token refresh", e);
             throw new BadRequestException("Failed to refresh token");
         }
+    }
+
+    /**
+     * Clean and normalize token string
+     */
+    private String cleanToken(String token) {
+        if (token == null) return "";
+        String cleaned = token.trim();
+        // Remove leading and trailing quotes
+        cleaned = cleaned.replaceAll("^\"|\"$", "");
+        return cleaned;
+    }
+
+    /**
+     * Verify stored refresh token in Redis matches the provided token
+     */
+    private void verifyStoredRefreshToken(String username, String token) {
+        String redisKey = buildRedisKey(username);
+
+        Object storedTokenObj = redisService.get(redisKey);
+        if (storedTokenObj == null) {
+            log.warn("Refresh token not found in Redis for user: {}", username);
+            throw new BadRequestException("Invalid or expired refresh token");
+        }
+
+        String storedToken = storedTokenObj.toString().trim();
+        if (storedToken.isEmpty()) {
+            log.warn("Stored refresh token is empty for user: {}", username);
+            throw new BadRequestException("Invalid or expired refresh token");
+        }
+        storedToken = storedToken.replaceAll("^\"|\"$", "");
+        if (!storedToken.equals(token)) {
+            log.warn("Refresh token mismatch for user: {}. Provided token does not match stored token", username);
+            throw new BadRequestException("Invalid or expired refresh token");
+        }
+    }
+
+    /**
+     * Build Redis key with namespace to avoid collisions
+     */
+    private String buildRedisKey(String username) {
+        return "auth:refreshToken:" + username;
     }
 
     //========== PRIVATE METHOD =========//
@@ -223,7 +263,48 @@ public class AuthServiceImpl implements AuthService {
         log.info("Authentication successful for username: {}", account.getUsername());
         return account;
     }
+
+    public class TokenConstants {
+        public static final String REDIS_REFRESH_TOKEN_PREFIX = "REFRESH_TOKEN:";
+    }
+
+    @Override
+    public void logout(String refreshToken) {
+        if (StringUtils.isBlank(refreshToken)) {
+            throw new BadRequestException("Refresh token is required");
+        }
+
+        if (!jwtProvider.validateToken(refreshToken)) {
+            throw new BadRequestException("Invalid refresh token");
+        }
+
+        try {
+            String username = jwtProvider.extractUsername(refreshToken);
+
+            if (StringUtils.isBlank(username)) {
+                throw new BadRequestException("Failed to extract username from token");
+            }
+
+            String redisKey = buildRedisKey(username);
+            redisService.delete(redisKey);
+
+            log.info("Logout successful for user: {}", username);
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to logout", e);
+            throw new BadRequestException("Logout operation failed");
+        }
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+
+    }
+
 }
-
-
-        
