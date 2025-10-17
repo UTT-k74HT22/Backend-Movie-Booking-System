@@ -45,4 +45,7 @@ public interface AuthService {
      * Reset password: verify OTP then update password and invalidate refresh token
      */
     void resetPassword(ResetPasswordRequest request);
+    /**
+     * Resend activation OTP to the user's email.
+     * */
 }

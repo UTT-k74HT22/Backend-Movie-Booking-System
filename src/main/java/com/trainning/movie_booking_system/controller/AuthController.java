@@ -7,15 +7,12 @@ import com.trainning.movie_booking_system.dto.request.Auth.RegisterRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.ForgotPasswordRequest;
 import com.trainning.movie_booking_system.dto.request.Auth.ResetPasswordRequest;
 import com.trainning.movie_booking_system.dto.request.Otp.VerifyOtpRequest;
-import com.trainning.movie_booking_system.dto.response.Auth.ApiResponse;
 import com.trainning.movie_booking_system.dto.response.Auth.AuthResponse;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
-import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -88,25 +85,10 @@ public class AuthController {
      * @return message
      */
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<?>> logout(
-            @Valid @RequestBody LogoutRequest request) {
-
-        try {
-            authService.logout(request.getRefreshToken());
-            log.info("User logged out successfully");
-
-            return ResponseEntity.ok(
-                    new ApiResponse<>(true, "Đăng xuất thành công")
-            );
-        } catch (BadRequestException e) {
-            log.warn("Logout failed: {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(new ApiResponse<>(false, e.getMessage()));
-        } catch (Exception e) {
-            log.error("Unexpected error during logout", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Có lỗi xảy ra, vui lòng thử lại"));
-        }
+    public ResponseEntity<BaseResponse<String>> logout(@Valid @RequestBody LogoutRequest request) {
+        log.info("[AUTH] API logout for refreshToken: {}", request.getRefreshToken());
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(BaseResponse.success("Đăng xuất thành công"));
     }
     /**
     *  Forgot password

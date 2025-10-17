@@ -37,18 +37,16 @@ public class SecurityConfig {
             "/",
             "/api/auth/register",
             "/api/auth/login",
-            "/api/auth/refresh-token",
             "/api/auth/logout",
+            "/api/auth/refresh-token",
             "/api/auth/activate",
+            "/api/auth/verify-otp",
+            "/api/auth/forgot-password",
+            "/api/auth/reset-password",
             "/api/otp/**",
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
-            "/api/auth/verify-otp",
-            "/api/auth/resend-otp",
-            "api/auth/refresh-token",
-            "api/auth/forgot-password",
-            "api/auth/reset-password",
             "/webjars/**"
     };
 

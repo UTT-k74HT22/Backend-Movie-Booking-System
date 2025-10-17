@@ -36,7 +36,6 @@ import static com.trainning.movie_booking_system.mapper.AuthMapper.toResponse;
 @Slf4j
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -45,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final RedisService redisService;
     private final OtpService otpService;
+    private final PassWordService passWordService;
 
     @Override
     @Transactional
@@ -73,6 +73,17 @@ public class AuthServiceImpl implements AuthService {
         otpService.sendOtp(request.getEmail(), OtpType.REGISTER);
 
         log.info("Registration successful for {}, awaiting OTP verification", request.getEmail());
+    }
+
+
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        passWordService.forgotPassword(request);
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        passWordService.resetPassword(request);
     }
 
     /**
@@ -303,11 +314,6 @@ public class AuthServiceImpl implements AuthService {
         log.info("Authentication successful for username: {}", account.getUsername());
         return account;
     }
-
-    public class TokenConstants {
-        public static final String REDIS_REFRESH_TOKEN_PREFIX = "REFRESH_TOKEN:";
-    }
-
     @Override
     public void logout(String refreshToken) {
         if (StringUtils.isBlank(refreshToken)) {
@@ -336,129 +342,4 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Logout operation failed");
         }
     }
-
-
-    /**
-     *FORGOT PASSWORD:
-     * 1. Validate email
-     * 2. Find account
-     * 3. Check account ACTIVE
-     * 4. Check email VERIFIED
-     * 5. Send OTP
-     * 6. Response: "OTP sent to email"
-     *
-     * */
-    @Override
-    @Transactional
-    public void forgotPassword(ForgotPasswordRequest request) {
-        log.info("forgotPassword for email: {}", request.getEmail());
-
-        //check validate email
-        if (StringUtils.isBlank(request.getEmail())){
-            throw new BadRequestException("Email is required");
-        }
-        //find account by email
-        Account account = accountRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> {
-                    log.warn("Account not found for email: {}", request.getEmail());
-                    return new BadRequestException("Email not found in system");
-                });
-        // check if email is verified and account is active
-        if (!UserStatus.ACTIVE.equals(account.getStatus())) {
-            log.warn("Inactive account trying forgot password: {}", account.getUsername());
-            throw new BadRequestException("Account is not active");
-        }
-        //send otp to email
-        try {
-            otpService.sendOtp(account.getEmail(), OtpType.FORGOT_PASSWORD);
-            log.info("Forgot password OTP sent to email: {}", account.getEmail());
-        }catch (Exception e) {
-            log.error("Failed to send forgot password OTP", e);
-            throw new BadRequestException("Failed to send OTP. Please try again later.");
-        }
-
-    }
-    /**  * RESET PASSWORD:
-     * 1. Validations (email, otp, passwords)
-     * 2. Verify OTP
-     * 3. Find account
-     * 4. Update password (encode)
-     * 5. Delete OTP ← Cleanup
-     * 6. Delete refresh tokens ← Force re-login
-     * 7. Response: "Password reset success"*/
-    @Override
-    @Transactional
-    public void resetPassword(ResetPasswordRequest request) {
-        log.info("Reset password request for email: {}", request.getEmail());
-        // ========== VALIDATIONS ==========
-
-        if (StringUtils.isBlank(request.getEmail())) {
-            throw new BadRequestException("Email is required");
-        }
-
-        if (StringUtils.isBlank(request.getOtp())) {
-            throw new BadRequestException("OTP is required");
-        }
-
-        if (StringUtils.isBlank(request.getNewPassword())) {
-            throw new BadRequestException("New password is required");
-        }
-
-        if (StringUtils.isBlank(request.getConfirmPassword())) {
-            throw new BadRequestException("Confirm password is required");
-        }
-
-        // Validate passwords match
-        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            log.warn("Password mismatch for email: {}", request.getEmail());
-            throw new BadRequestException("Passwords do not match");
-        }
-        // ========== VERIFY OTP ==========
-
-        boolean isValidOtp = otpService.verifyOtp(
-                request.getEmail(),
-                request.getOtp(),
-                OtpType.FORGOT_PASSWORD
-        );
-
-        if (!isValidOtp) {
-            log.warn("Invalid OTP for email: {}", request.getEmail());
-            throw new BadRequestException("Invalid or expired OTP");
-        }
-
-        // ========== UPDATE PASSWORD ==========
-
-        Account account = accountRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> {
-                    log.warn("Account not found during password reset: {}", request.getEmail());
-                    return new BadRequestException("Account not found");
-                });
-        // Encode and update password
-        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
-        account.setPassword(encodedPassword);
-        accountRepository.save(account);
-
-        log.info("Password updated successfully for account: {}", account.getId());
-
-        // ========== CLEANUP & INVALIDATE TOKENS ==========
-
-        //  Delete OTP from Redis
-        try {
-            otpService.deleteOtp(request.getEmail(), OtpType.FORGOT_PASSWORD);
-            log.debug("OTP deleted from Redis for email: {}", request.getEmail());
-        } catch (Exception e) {
-            log.warn("Failed to delete OTP, but password was reset successfully", e);
-        }
-
-        // Invalidate all refresh tokens (force user to login again)
-        String refreshTokenRedisKey = buildRedisKey(account.getUsername());
-        try {
-            redisService.delete(refreshTokenRedisKey);
-            log.debug("Refresh tokens invalidated for user: {}", account.getUsername());
-        } catch (Exception e) {
-            log.warn("Failed to invalidate refresh tokens, but password was reset successfully", e);
-        }
-
-        log.info("Password reset completed successfully for user: {}", account.getUsername());
-    }
-    }
+}
