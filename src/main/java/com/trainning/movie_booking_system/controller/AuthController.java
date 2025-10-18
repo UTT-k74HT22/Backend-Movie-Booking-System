@@ -92,7 +92,6 @@ public class AuthController {
     }
     /**
     *  Forgot password
-    *
     * */
     @PostMapping("/forgot-password")
     public ResponseEntity<BaseResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {

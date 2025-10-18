@@ -34,6 +34,10 @@ public interface AuthService {
      */
     AuthResponse refreshToken(String refreshToken);
 
+    /**
+     * Logout: invalidate the refresh token
+     * @param refreshToken refresh token to be invalidated
+     */
     void logout(String refreshToken);
 
     /**
@@ -45,7 +49,4 @@ public interface AuthService {
      * Reset password: verify OTP then update password and invalidate refresh token
      */
     void resetPassword(ResetPasswordRequest request);
-    /**
-     * Resend activation OTP to the user's email.
-     * */
 }
