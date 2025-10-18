@@ -1,0 +1,54 @@
+package com.trainning.movie_booking_system.service;
+
+import com.trainning.movie_booking_system.dto.request.Movie.MovieRequest;
+import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
+import com.trainning.movie_booking_system.dto.response.System.PageResponse;
+import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+
+public interface MovieService {
+
+    /**
+     * Create a new movie
+     * @param request the movie request
+     * @return the created movie response
+     */
+    MovieResponse create(MovieRequest request);
+
+    /**
+     * Update an existing movie
+     *
+     * @param movieId the ID of the movie to update
+     * @param request the movie request
+     * @return the updated movie response
+     */
+    MovieResponse update(Long movieId, MovieRequest request);
+
+    /**
+     * Delete a movie by its ID
+     *
+     * @param movieId     the ID of the movie to delete
+     * @param movieStatus the status of the movie
+     */
+    void delete(Long movieId, MovieStatus movieStatus);
+
+    /**
+     * Get a movie by its ID
+     * @param movieId the ID of the movie to retrieve
+     * @return the movie response
+     */
+    MovieResponse getById(Long movieId);
+
+    /**
+     * Get all movies with pagination
+     * @param page the page number
+     * @param size the size of the page
+     * @return a paginated response of movies
+     */
+    PageResponse<?> getAll(int page, int size);
+
+    /**
+     * Count total number of movies
+     * @return the total count of movies
+     */
+    long countTotalMovies();
+}
