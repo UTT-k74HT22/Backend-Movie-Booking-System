@@ -27,7 +27,7 @@ public interface TheaterService {
      * Delete a theater
      *
      * @param theaterId theater id
-     * @param status
+     * @param status theater status
      */
     void delete(Long theaterId, TheaterStatus status);
 

@@ -6,12 +6,15 @@ import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
 import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.mapper.TheaterMapper;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.TheaterService;
 import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import static com.trainning.movie_booking_system.mapper.TheaterMapper.toTheaterResponse;
 
@@ -79,12 +82,15 @@ public class TheaterServiceImpl  implements TheaterService {
      * Delete a theater
      *
      * @param theaterId theater id
-     * @param status
+     * @param status  theater status
      */
     @Transactional
     @Override
     public void delete(Long theaterId, TheaterStatus status) {
-
+        log.info("[THEATER SERVICE] Deleting theater with ID: {}", theaterId);
+        Theater theater = getTheaterById(theaterId);
+        theater.setStatus(status);
+        theaterRepository.save(theater);
     }
 
     /**
@@ -95,7 +101,8 @@ public class TheaterServiceImpl  implements TheaterService {
      */
     @Override
     public TheaterResponse getById(Long theaterId) {
-        return null;
+        log.info("[THEATER SERVICE] Fetching theater with ID: {}", theaterId);
+        return toTheaterResponse(getTheaterById(theaterId));
     }
 
     /**
@@ -107,7 +114,15 @@ public class TheaterServiceImpl  implements TheaterService {
      */
     @Override
     public PageResponse<?> getAlls(int pageNumber, int pageSize) {
-        return null;
+        log.info("[THEATER SERVICE] Fetching all theaters - Page: {}, Size: {}", pageNumber, pageSize);
+
+        if (pageNumber < 0 || pageSize < 0) {
+            throw new BadRequestException("Invalid PageNumber and PageSize");
+        }
+
+        Page<TheaterResponse> theaterResponses = theaterRepository.findAll(PageRequest.of(pageNumber, pageSize))
+                .map(TheaterMapper::toTheaterResponse);
+        return PageResponse.of(theaterResponses);
     }
 
     /**
@@ -117,7 +132,8 @@ public class TheaterServiceImpl  implements TheaterService {
      */
     @Override
     public long countTheaters() {
-        return 0;
+        log.info("[THEATER SERVICE] Counting theater information");
+        return theaterRepository.count();
     }
 
     //=========================================== PRIVATE METHOD ===========================================//
