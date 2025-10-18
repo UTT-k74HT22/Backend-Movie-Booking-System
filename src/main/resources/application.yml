@@ -77,6 +77,20 @@ jwt:
   expiryDay: 14
   accessKey: p1zs6HE4bebUL6aVjJhSEtj/Bp4rhQPK3vUR2gpcA06muNhYO77Z9kzb3U5sDXBkdpEZwECJfm0tNuDRiVu29g==
 
+#Config OpenAPI DOCUMENTATION
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    url: /v3/api-docs/movie-booking-system
+openapi:
+  service:
+    api-docs: movie-booking-system
+    server: http://localhost:${server.port}
+    title: Movie Booking System
+    version: 1.0.0
+
 
 # LOGGING CONFIGURATION
 logging:
