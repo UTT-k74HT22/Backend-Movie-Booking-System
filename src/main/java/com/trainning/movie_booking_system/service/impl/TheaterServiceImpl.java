@@ -13,6 +13,9 @@ import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -33,6 +36,10 @@ public class TheaterServiceImpl  implements TheaterService {
      */
     @Transactional
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "theaters:all", allEntries = true),
+            @CacheEvict(value = "theaters:detail", allEntries = true)
+    })
     public TheaterResponse create(TheaterRequest request) {
         log.info("[THEATER SERVICE] Creating new theater with name: {}", request.getName());
 
@@ -41,13 +48,7 @@ public class TheaterServiceImpl  implements TheaterService {
             throw new BadRequestException("Theater with the same name already exists");
         }
 
-        Theater theater = Theater.builder()
-                .name(request.getName())
-                .location(request.getLocation())
-                .city(request.getCity())
-                .phone(request.getPhone())
-                .status(TheaterStatus.INACTIVE)
-                .build();
+        Theater theater = buildTheater(request);
 
         theaterRepository.save(theater);
 
@@ -65,6 +66,10 @@ public class TheaterServiceImpl  implements TheaterService {
      */
     @Transactional
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "theaters:all", allEntries = true),
+            @CacheEvict(value = "theater:detail", key = "#theaterId")
+    })
     public TheaterResponse update(Long theaterId, UpdateTheaterRequest request) {
         log.info("[THEATER SERVICE] Updating theater with ID: {}", theaterId);
 
@@ -86,6 +91,10 @@ public class TheaterServiceImpl  implements TheaterService {
      */
     @Transactional
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "theaters:all", allEntries = true),
+            @CacheEvict(value = "theater:detail", key = "#theaterId")
+    })
     public void delete(Long theaterId, TheaterStatus status) {
         log.info("[THEATER SERVICE] Deleting theater with ID: {}", theaterId);
         Theater theater = getTheaterById(theaterId);
@@ -100,6 +109,7 @@ public class TheaterServiceImpl  implements TheaterService {
      * @return theater response object
      */
     @Override
+    @Cacheable(value = "theater:detail", key = "#theaterId")
     public TheaterResponse getById(Long theaterId) {
         log.info("[THEATER SERVICE] Fetching theater with ID: {}", theaterId);
         return toTheaterResponse(getTheaterById(theaterId));
@@ -113,6 +123,7 @@ public class TheaterServiceImpl  implements TheaterService {
      * @return paginated theater response
      */
     @Override
+    @Cacheable(value = "theaters:all", key = "#pageNumber + ':' + #pageSize")
     public PageResponse<?> getAlls(int pageNumber, int pageSize) {
         log.info("[THEATER SERVICE] Fetching all theaters - Page: {}, Size: {}", pageNumber, pageSize);
 
@@ -169,6 +180,16 @@ public class TheaterServiceImpl  implements TheaterService {
                     log.error("[THEATER SERVICE] Theater with ID '{}' not found", theaterId);
                     return new BadRequestException("Theater not found");
                 });
+    }
+
+    private static Theater buildTheater(TheaterRequest request) {
+        return Theater.builder()
+                .name(request.getName())
+                .location(request.getLocation())
+                .city(request.getCity())
+                .phone(request.getPhone())
+                .status(TheaterStatus.INACTIVE)
+                .build();
     }
 }
 
