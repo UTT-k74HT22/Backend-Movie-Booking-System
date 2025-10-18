@@ -76,7 +76,14 @@ jwt:
   expiryMinutes: 5
   expiryDay: 14
   accessKey: p1zs6HE4bebUL6aVjJhSEtj/Bp4rhQPK3vUR2gpcA06muNhYO77Z9kzb3U5sDXBkdpEZwECJfm0tNuDRiVu29g==
+  access-token-expiry-minutes: 30 #minutes
+  refresh-token-expiry-days: 1  #days
 
+otp:
+  ttl-minutes: 5              # Thời gian sống của OTP (phút)
+  resend-limit-seconds: 60    # Thời gian giữa 2 lần gửi lại OTP (giây)
+  count-ttl-hours: 24         # Thời gian reset đếm số lần gửi (giờ)
+  max-send-per-day: 5         # Giới hạn gửi OTP tối đa mỗi ngày
 #Config OpenAPI DOCUMENTATION
 springdoc:
   api-docs:
@@ -105,11 +112,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-
-  file:
-    name: logs/application.log
-    max-size: 10MB
-    max-history: 30
 
   logback:
     rollingpolicy:
