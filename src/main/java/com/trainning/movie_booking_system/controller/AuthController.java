@@ -80,7 +80,7 @@ public class AuthController {
         return ResponseEntity.ok(BaseResponse.success(authService.refreshToken(request.getRefreshToken())));
     }
     /**
-        * Logout
+     * Logout
      * @param request refresh token
      * @return message
      */
@@ -90,10 +90,12 @@ public class AuthController {
         authService.logout(request.getRefreshToken());
         return ResponseEntity.ok(BaseResponse.success("Đăng xuất thành công"));
     }
+
     /**
-    *  Forgot password
-    *
-    * */
+     * Quên mật khẩu
+     * @param request email
+     * @return message
+     */
     @PostMapping("/forgot-password")
     public ResponseEntity<BaseResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         log.info("[AUTH] API forgot password for email: {}", request.getEmail());
@@ -101,6 +103,11 @@ public class AuthController {
         return ResponseEntity.ok(BaseResponse.success());
     }
 
+    /**
+     * Đặt lại mật khẩu
+     * @param request email, otp, new password
+     * @return message
+     */
     @PostMapping("/reset-password")
     public ResponseEntity<BaseResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         log.info("[AUTH] API reset password for email: {}", request.getEmail());
