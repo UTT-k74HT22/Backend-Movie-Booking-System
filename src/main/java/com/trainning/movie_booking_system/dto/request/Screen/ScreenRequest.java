@@ -1,7 +1,24 @@
 package com.trainning.movie_booking_system.dto.request.Screen;
 
+import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
 @Getter
 public class ScreenRequest {
+
+    @NotBlank(message = "Screen name must not be blank")
+    private String name;
+
+    @Size(min = 1, message = "Total seats must be at least 1")
+    @NotNull(message = "Total seats must not be null")
+    private Integer totalSeats;
+
+    @NotBlank(message = "Screen status must not be blank")
+    private ScreenStatus status;
+
+    @NotNull(message = "Theater ID must not be null")
+    private Long theaterId;
 }

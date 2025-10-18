@@ -25,6 +25,10 @@ public class ScreenServiceImpl implements ScreenService {
      */
     @Override
     public ScreenResponse create(ScreenRequest request) {
+        log.info("[SCREEN-SERVICE] Create screen request: {}", request);
+
+
+
         return null;
     }
 
