@@ -3,6 +3,8 @@ package com.trainning.movie_booking_system.service.impl;
 import com.trainning.movie_booking_system.dto.request.Theater.TheaterRequest;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
+import com.trainning.movie_booking_system.entity.Theater;
+import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.TheaterService;
 import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
@@ -10,6 +12,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import static com.trainning.movie_booking_system.mapper.TheaterMapper.toTheaterResponse;
 
 @Service
 @Slf4j
@@ -27,7 +30,26 @@ public class TheaterServiceImpl  implements TheaterService {
     @Transactional
     @Override
     public TheaterResponse create(TheaterRequest request) {
-        return null;
+        log.info("[THEATER SERVICE] Creating new theater with name: {}", request.getName());
+
+        if (theaterRepository.existsByName(request.getName())) {
+            log.error("[THEATER SERVICE] Theater with name '{}' already exists", request.getName());
+            throw new BadRequestException("Theater with the same name already exists");
+        }
+
+        Theater theater = Theater.builder()
+                .name(request.getName())
+                .location(request.getLocation())
+                .city(request.getCity())
+                .phone(request.getPhone())
+                .status(TheaterStatus.INACTIVE)
+                .build();
+
+        theaterRepository.save(theater);
+
+        log.info("[THEATER SERVICE] Theater '{}' created successfully with ID: {}", theater.getName(), theater.getId());
+
+        return toTheaterResponse(theater);
     }
 
     /**

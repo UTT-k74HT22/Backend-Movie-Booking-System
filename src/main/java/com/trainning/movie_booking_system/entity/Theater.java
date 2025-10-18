@@ -17,7 +17,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Theater extends BaseEntity {
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 150, unique = true)
     private String name;
 
     @Column(length = 255)
