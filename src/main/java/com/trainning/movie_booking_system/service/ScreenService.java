@@ -6,6 +6,8 @@ import com.trainning.movie_booking_system.dto.response.Screen.ScreenResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
 
+import java.util.List;
+
 public interface ScreenService {
 
     /**
@@ -40,6 +42,14 @@ public interface ScreenService {
      * @return screen response object
      */
     ScreenResponse getById(Long screenId);
+
+    /**
+     * Get screens by theater id
+     *
+     * @param theaterId theater id
+     * @return screen response object
+     */
+    List<ScreenResponse> getByTheater(Long theaterId);
 
     /**
      * Get all screens with pagination

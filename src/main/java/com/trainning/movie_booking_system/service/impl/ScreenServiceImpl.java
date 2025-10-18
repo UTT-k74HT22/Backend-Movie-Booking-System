@@ -14,11 +14,18 @@ import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.ScreenService;
 import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+
 import static com.trainning.movie_booking_system.mapper.ScreenMapper.toScreenResponse;
 
 @Service
@@ -35,7 +42,12 @@ public class ScreenServiceImpl implements ScreenService {
      * @param request screen request object
      * @return screen response object
      */
+    @Transactional
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "screens:theater", key = "#request.theaterId"),
+            @CacheEvict(value = "screen:detail", allEntries = true)
+    })
     public ScreenResponse create(ScreenRequest request) {
         log.info("[SCREEN-SERVICE] Create screen request: {}", request);
 
@@ -59,6 +71,11 @@ public class ScreenServiceImpl implements ScreenService {
      * @return screen response object
      */
     @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "screens:theater", key = "#request.theaterId"),
+            @CacheEvict(value = "screen:detail", key = "#screenId")
+    })
     public ScreenResponse update(Long screenId, UpdateScreenRequest request) {
         log.info("[SCREEN-SERVICE] Update screen request: {}", request);
 
@@ -75,6 +92,11 @@ public class ScreenServiceImpl implements ScreenService {
      * @param status screen status
      */
     @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "screens:theater", key = "#screen.theater.id"),
+            @CacheEvict(value = "screen:detail", key = "#screenId")
+    })
     public void delete(Long screenId, ScreenStatus status) {
         log.info("[SCREEN-SERVICE] Delete screen request: {}", status);
         Screen screen = getScreenById(screenId);
@@ -89,9 +111,23 @@ public class ScreenServiceImpl implements ScreenService {
      * @return screen response object
      */
     @Override
+    @Cacheable(value = "screen:detail", key = "#screenId")
     public ScreenResponse getById(Long screenId) {
         log.info("[SCREEN-SERVICE] Get screen by id request: {}", screenId);
         return toScreenResponse(getScreenById(screenId));
+    }
+
+    /**
+     * Get screens by theater id
+     *
+     * @param theaterId theater id
+     * @return screen response object
+     */
+    @Cacheable(value = "screens:theater", key = "#theaterId")
+    public List<ScreenResponse> getByTheater(Long theaterId) {
+        log.info("[SCREEN-SERVICE] Get screens by theater id request: {}", theaterId);
+        List<Screen> screens = screenRepository.findByTheaterId(theaterId);
+        return screens.stream().map(ScreenMapper::toScreenResponse).toList();
     }
 
     /**

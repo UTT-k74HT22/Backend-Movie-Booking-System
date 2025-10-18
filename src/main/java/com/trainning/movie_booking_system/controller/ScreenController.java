@@ -70,6 +70,18 @@ public class ScreenController {
     }
 
     /**
+     * Get screens by theater id
+     *
+     * @param theaterId theater id
+     * @return screen response object
+     */
+    @GetMapping("/theater/{theaterId}")
+    public ResponseEntity<?> getByTheater(@PathVariable Long theaterId) {
+        log.info("[SCREEN-CONTROLLER] Get screens by theater id request: {}", theaterId);
+        return ResponseEntity.ok(BaseResponse.success(service.getByTheater(theaterId)));
+    }
+
+    /**
      * Get all screens with pagination
      *
      * @param pageNumber page number
