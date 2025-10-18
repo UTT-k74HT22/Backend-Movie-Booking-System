@@ -15,4 +15,12 @@ public interface ScreenRepository extends JpaRepository<Screen,Long> {
      */
     boolean existsScreenByName(String name);
 
+    /**
+     * Check if a screen exists by its name and theater ID
+     *
+     * @param name      the name of the screen
+     * @param theaterId the ID of the theater
+     * @return true if a screen with the given name and theater ID exists, false otherwise
+     */
+    boolean existsByNameAndTheaterId(String name, Long theaterId);
 }

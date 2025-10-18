@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.service;
 
 import com.trainning.movie_booking_system.dto.request.Screen.ScreenRequest;
+import com.trainning.movie_booking_system.dto.request.Screen.UpdateScreenRequest;
 import com.trainning.movie_booking_system.dto.response.Screen.ScreenResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
@@ -22,7 +23,7 @@ public interface ScreenService {
      * @param request  screen request object
      * @return screen response object
      */
-    ScreenResponse update(Long screenId, ScreenRequest request);
+    ScreenResponse update(Long screenId, UpdateScreenRequest request);
 
     /**
      * Delete a screen

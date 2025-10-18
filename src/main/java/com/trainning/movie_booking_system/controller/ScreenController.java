@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.controller;
 
 import com.trainning.movie_booking_system.dto.request.Screen.ScreenRequest;
+import com.trainning.movie_booking_system.dto.request.Screen.UpdateScreenRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.ScreenService;
 import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
@@ -40,7 +41,7 @@ public class ScreenController {
      * @return screen response object
      */
     @PatchMapping("/{screenId}")
-    public ResponseEntity<?> update(@PathVariable Long screenId, @RequestBody @Valid ScreenRequest request) {
+    public ResponseEntity<?> update(@PathVariable Long screenId, @RequestBody @Valid UpdateScreenRequest request) {
         log.info("[SCREEN-CONTROLLER] Update screen request: {}, {}", screenId, request);
         return ResponseEntity.ok(BaseResponse.success(service.update(screenId, request)));
     }
