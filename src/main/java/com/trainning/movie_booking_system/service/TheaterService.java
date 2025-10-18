@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.service;
 
 import com.trainning.movie_booking_system.dto.request.Theater.TheaterRequest;
+import com.trainning.movie_booking_system.dto.request.Theater.UpdateTheaterRequest;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
 import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
@@ -20,7 +21,7 @@ public interface TheaterService {
      * @param request theater request object
      * @return theater response object
      */
-    TheaterResponse update(Long theaterId, TheaterRequest request);
+    TheaterResponse update(Long theaterId, UpdateTheaterRequest request);
 
     /**
      * Delete a theater

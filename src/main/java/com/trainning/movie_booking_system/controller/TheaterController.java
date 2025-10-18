@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.controller;
 
 import com.trainning.movie_booking_system.dto.request.Theater.TheaterRequest;
+import com.trainning.movie_booking_system.dto.request.Theater.UpdateTheaterRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.TheaterService;
 import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
@@ -43,7 +44,7 @@ public class TheaterController {
      */
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
     @PatchMapping("/{theaterId}")
-    public ResponseEntity<?> update(@PathVariable Long theaterId, @RequestBody @Valid TheaterRequest request) {
+    public ResponseEntity<?> update(@PathVariable Long theaterId, @RequestBody @Valid UpdateTheaterRequest request) {
         log.info("[THEATER-CONTROLLER] Update theater request: {}, {}", theaterId, request);
         return ResponseEntity.ok(BaseResponse.success(theaterService.update(theaterId, request)));
     }
