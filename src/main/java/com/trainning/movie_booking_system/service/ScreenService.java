@@ -29,17 +29,17 @@ public interface ScreenService {
      * Delete a screen
      *
      * @param screenId screen id
+     * @param status screen status
      */
-    void delete(Long screenId);
+    void delete(Long screenId, ScreenStatus status);
 
     /**
      * Get a screen by id
      *
      * @param screenId screen id
-     * @param status  screen status
      * @return screen response object
      */
-    ScreenResponse getScreenById(Long screenId, ScreenStatus status);
+    ScreenResponse getById(Long screenId);
 
     /**
      * Get all screens with pagination

@@ -4,15 +4,20 @@ import com.trainning.movie_booking_system.dto.request.Screen.ScreenRequest;
 import com.trainning.movie_booking_system.dto.request.Screen.UpdateScreenRequest;
 import com.trainning.movie_booking_system.dto.response.Screen.ScreenResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
+import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
 import com.trainning.movie_booking_system.entity.Screen;
 import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.mapper.ScreenMapper;
+import com.trainning.movie_booking_system.mapper.TheaterMapper;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.ScreenService;
 import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import static com.trainning.movie_booking_system.mapper.ScreenMapper.toScreenResponse;
 
@@ -67,22 +72,26 @@ public class ScreenServiceImpl implements ScreenService {
      * Delete a screen
      *
      * @param screenId screen id
+     * @param status screen status
      */
     @Override
-    public void delete(Long screenId) {
-
+    public void delete(Long screenId, ScreenStatus status) {
+        log.info("[SCREEN-SERVICE] Delete screen request: {}", status);
+        Screen screen = getScreenById(screenId);
+        screen.setStatus(status);
+        screenRepository.save(screen);
     }
 
     /**
      * Get a screen by id
      *
      * @param screenId screen id
-     * @param status
      * @return screen response object
      */
     @Override
-    public ScreenResponse getScreenById(Long screenId, ScreenStatus status) {
-        return null;
+    public ScreenResponse getById(Long screenId) {
+        log.info("[SCREEN-SERVICE] Get screen by id request: {}", screenId);
+        return toScreenResponse(getScreenById(screenId));
     }
 
     /**
@@ -94,7 +103,15 @@ public class ScreenServiceImpl implements ScreenService {
      */
     @Override
     public PageResponse<?> getAll(int pageNumber, int pageSize) {
-        return null;
+        log.info("[SCREEN-SERVICE] Get all screens request: pageNumber={}, pageSize={}", pageNumber, pageSize);
+
+        if (pageNumber < 0 || pageSize < 0) {
+            throw new BadRequestException("Invalid PageNumber and PageSize");
+        }
+
+        Page<ScreenResponse> screenResponses = screenRepository.findAll(PageRequest.of(pageNumber, pageSize))
+                .map(ScreenMapper::toScreenResponse);
+        return PageResponse.of(screenResponses);
     }
 
     /**
@@ -104,7 +121,8 @@ public class ScreenServiceImpl implements ScreenService {
      */
     @Override
     public long countAllScreens() {
-        return 0;
+        log.info("[SCREEN-SERVICE] Count all screens request");
+        return screenRepository.count();
     }
 
     //========== PRIVATE METHOD ==========//

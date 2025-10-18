@@ -52,22 +52,21 @@ public class ScreenController {
      * @param screenId screen id
      */
     @DeleteMapping("/{screenId}")
-    public ResponseEntity<?> delete(@PathVariable Long screenId) {
+    public ResponseEntity<?> delete(@PathVariable Long screenId, @RequestParam ScreenStatus status) {
         log.info("[SCREEN-CONTROLLER] Delete screen request: {}", screenId);
-        service.delete(screenId);
+        service.delete(screenId, status);
         return ResponseEntity.ok(BaseResponse.success());
     }
 
     /**
      * Get a screen by id
      *
-     * @param screenId screen id
      * @return screen response object
      */
     @GetMapping("/{screenId}")
-    public ResponseEntity<?> getScreenById(@PathVariable Long screenId, @RequestParam(required = false) ScreenStatus status) {
+    public ResponseEntity<?> getScreenById(@PathVariable Long screenId) {
         log.info("[SCREEN-CONTROLLER] Get screen by id request: {}", screenId);
-        return ResponseEntity.ok(BaseResponse.success(service.getScreenById(screenId, status)));
+        return ResponseEntity.ok(BaseResponse.success(service.getById(screenId)));
     }
 
     /**
