@@ -84,6 +84,20 @@ otp:
   resend-limit-seconds: 60    # Thời gian giữa 2 lần gửi lại OTP (giây)
   count-ttl-hours: 24         # Thời gian reset đếm số lần gửi (giờ)
   max-send-per-day: 5         # Giới hạn gửi OTP tối đa mỗi ngày
+#Config OpenAPI DOCUMENTATION
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    url: /v3/api-docs/movie-booking-system
+openapi:
+  service:
+    api-docs: movie-booking-system
+    server: http://localhost:${server.port}
+    title: Movie Booking System
+    version: 1.0.0
+
 
 # LOGGING CONFIGURATION
 logging:
