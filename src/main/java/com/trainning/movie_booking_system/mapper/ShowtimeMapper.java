@@ -10,6 +10,7 @@ public class ShowtimeMapper {
                 .id(showtime.getId())
                 .movieId(showtime.getMovieId())
                 .screen(ScreenMapper.toScreenResponse(showtime.getScreen()))
+                .theater(TheaterMapper.toTheaterResponse(showtime.getScreen().getTheater()))
                 .showDate(showtime.getShowDate())
                 .startTime(showtime.getStartTime())
                 .endTime(showtime.getEndTime())

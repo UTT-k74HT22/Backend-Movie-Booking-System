@@ -4,12 +4,19 @@ import com.trainning.movie_booking_system.dto.request.Showtime.ShowtimeRequest;
 import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeRequest;
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
+import com.trainning.movie_booking_system.entity.Screen;
+import com.trainning.movie_booking_system.entity.Showtime;
+import com.trainning.movie_booking_system.entity.Theater;
+import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
 import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import static com.trainning.movie_booking_system.mapper.ShowtimeMapper.toShowtimeResponse;
 
 @Service
 @Slf4j
@@ -17,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class ShowtimeServiceImpl implements ShowtimeService {
 
     private final ShowtimeRepository showtimeRepository;
+    private final ScreenRepository screenRepository;
 
     /**
      * Create a new showtime.
@@ -24,9 +32,39 @@ public class ShowtimeServiceImpl implements ShowtimeService {
      * @param request the showtime request data
      * @return the created showtime response
      */
+    @Transactional
     @Override
     public ShowtimeResponse create(ShowtimeRequest request) {
-        return null;
+        log.info("[SHOWTIME SERVICE]: Creating new showtime with request: {}", request);
+
+        Screen screen = screenRepository.findById(request.getScreenId())
+                .orElseThrow(() -> {
+                    log.error("[SHOWTIME SERVICE]: Screen with ID {} not found", request.getScreenId());
+                    return new BadRequestException("Screen not found");
+                });
+
+        Theater theater = screen.getTheater();
+
+        if (showtimeRepository.existsByScreenIdAndShowDateAndStartTime(request.getScreenId(),
+                request.getShowDate(), request.getStartTime())) {
+
+            log.error("[SHOWTIME SERVICE]: Showtime already exists for screen ID {}, date {}, and start time {}",
+                    request.getScreenId(), request.getShowDate(), request.getStartTime());
+            throw new BadRequestException("Showtime already exists for the given screen, date, and time");
+        }
+
+        Showtime showtime = Showtime.builder()
+                .movieId(request.getMovieId()) // mock tạm, sau này đổi sang Movie entity
+                .screen(screen)
+                .showDate(request.getShowDate())
+                .startTime(request.getStartTime())
+                .endTime(request.getEndTime())
+                .price(request.getPrice())
+                .status(ShowtimeStatus.ACTIVE)
+                .build();
+        showtimeRepository.save(showtime);
+
+        return toShowtimeResponse(showtime);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.dto.response.Showtime;
 
 import com.trainning.movie_booking_system.dto.response.Screen.ScreenResponse;
+import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
 import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
 import lombok.*;
 import java.io.Serializable;
@@ -22,6 +23,8 @@ public class ShowtimeResponse implements Serializable {
     private Long movieId;
 
     private ScreenResponse screen;
+
+    private TheaterResponse theater;
 
     private LocalDate showDate;
 
