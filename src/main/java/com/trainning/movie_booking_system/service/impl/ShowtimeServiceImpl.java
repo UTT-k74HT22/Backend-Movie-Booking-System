@@ -8,6 +8,7 @@ import com.trainning.movie_booking_system.entity.Screen;
 import com.trainning.movie_booking_system.entity.Showtime;
 import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
@@ -74,9 +75,43 @@ public class ShowtimeServiceImpl implements ShowtimeService {
      * @param request the updated showtime request data
      * @return the updated showtime response
      */
+    @Transactional
     @Override
     public ShowtimeResponse update(Long id, UpdateShowtimeRequest request) {
-        return null;
+        log.info("[SHOWTIME SERVICE]: Updating showtime ID {} with data: {}", id, request);
+
+        Showtime showtime = getShowtime(id);
+
+        // Kiểm tra screen nếu có thay đổi
+        if (request.getScreenId() != null && !request.getScreenId().equals(showtime.getScreen().getId())) {
+            Screen newScreen = screenRepository.findById(request.getScreenId())
+                    .orElseThrow(() -> new NotFoundException("Screen not found with ID: " + request.getScreenId()));
+            showtime.setScreen(newScreen);
+        }
+
+        // Kiểm tra trùng lịch (nếu có thay đổi ngày/giờ/screen)
+        if (request.getShowDate() != null || request.getStartTime() != null) {
+            Long screenId = request.getScreenId() != null ? request.getScreenId() : showtime.getScreen().getId();
+            var date = request.getShowDate() != null ? request.getShowDate() : showtime.getShowDate();
+            var startTime = request.getStartTime() != null ? request.getStartTime() : showtime.getStartTime();
+
+            boolean exists = showtimeRepository.existsByScreenIdAndShowDateAndStartTimeAndIdNot(
+                    screenId, date, startTime, id);
+            if (exists) {
+                throw new BadRequestException("Another showtime already exists for this screen/date/time");
+            }
+        }
+
+        // Update các trường có thay đổi
+        if (request.getMovieId() != null) showtime.setMovieId(request.getMovieId());
+        if (request.getShowDate() != null) showtime.setShowDate(request.getShowDate());
+        if (request.getStartTime() != null) showtime.setStartTime(request.getStartTime());
+        if (request.getEndTime() != null) showtime.setEndTime(request.getEndTime());
+        if (request.getPrice() != null) showtime.setPrice(request.getPrice());
+        if (request.getStatus() != null) showtime.setStatus(request.getStatus());
+
+        showtimeRepository.save(showtime);
+        return toShowtimeResponse(showtime);
     }
 
     /**
@@ -120,5 +155,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Override
     public long countShowtime() {
         return 0;
+    }
+
+    //====================== PRIVATE METHOD ====================//
+    private Showtime getShowtime(Long id) {
+        return showtimeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Showtime not found with ID: " + id));
     }
 }
