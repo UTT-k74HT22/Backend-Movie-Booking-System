@@ -4,12 +4,13 @@ import com.trainning.movie_booking_system.dto.request.Showtime.ShowtimeRequest;
 import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeRequest;
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
+import com.trainning.movie_booking_system.entity.Movie;
 import com.trainning.movie_booking_system.entity.Screen;
 import com.trainning.movie_booking_system.entity.Showtime;
-import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.mapper.ShowtimeMapper;
+import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
@@ -29,6 +30,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
     private final ShowtimeRepository showtimeRepository;
     private final ScreenRepository screenRepository;
+    private final MovieRepository movieRepository;
 
     /**
      * Create a new showtime.
@@ -47,7 +49,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                     return new BadRequestException("Screen not found");
                 });
 
-        Theater theater = screen.getTheater();
+        Movie movie = movieRepository.findById(request.getMovieId())
+                .orElseThrow(() -> {
+                    log.error("[SHOWTIME SERVICE]: Movie with ID {} not found", request.getMovieId());
+                    return new BadRequestException("Movie not found");
+                });
 
         if (showtimeRepository.existsByScreenIdAndShowDateAndStartTime(request.getScreenId(),
                 request.getShowDate(), request.getStartTime())) {
@@ -58,7 +64,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         }
 
         Showtime showtime = Showtime.builder()
-                .movieId(request.getMovieId()) // mock tạm, sau này đổi sang Movie entity
+                .movie(movie)
                 .screen(screen)
                 .showDate(request.getShowDate())
                 .startTime(request.getStartTime())
@@ -92,6 +98,12 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             showtime.setScreen(newScreen);
         }
 
+        if (request.getMovieId() != null && !request.getMovieId().equals(showtime.getMovie().getId())) {
+            Movie newMovie = movieRepository.findById(request.getMovieId())
+                    .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + request.getMovieId()));
+            showtime.setMovie(newMovie);
+        }
+
         // Kiểm tra trùng lịch (nếu có thay đổi ngày/giờ/screen)
         if (request.getShowDate() != null || request.getStartTime() != null) {
             Long screenId = request.getScreenId() != null ? request.getScreenId() : showtime.getScreen().getId();
@@ -106,7 +118,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         }
 
         // Update các trường có thay đổi
-        if (request.getMovieId() != null) showtime.setMovieId(request.getMovieId());
         if (request.getShowDate() != null) showtime.setShowDate(request.getShowDate());
         if (request.getStartTime() != null) showtime.setStartTime(request.getStartTime());
         if (request.getEndTime() != null) showtime.setEndTime(request.getEndTime());

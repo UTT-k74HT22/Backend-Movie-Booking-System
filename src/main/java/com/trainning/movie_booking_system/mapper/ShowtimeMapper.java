@@ -8,7 +8,7 @@ public class ShowtimeMapper {
     public static ShowtimeResponse toShowtimeResponse(Showtime showtime) {
         return ShowtimeResponse.builder()
                 .id(showtime.getId())
-                .movieId(showtime.getMovieId())
+                .movie(MovieMapper.toMovieResponse(showtime.getMovie()))
                 .screen(ScreenMapper.toScreenResponse(showtime.getScreen()))
                 .theater(TheaterMapper.toTheaterResponse(showtime.getScreen().getTheater()))
                 .showDate(showtime.getShowDate())

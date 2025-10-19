@@ -30,12 +30,9 @@ import java.time.LocalTime;
 @Builder
 public class Showtime extends BaseEntity {
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "movie_id", nullable = false)
-//    private Movie movie;
-
-    @Column(name = "movie_id", nullable = false)
-    private Long movieId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "movie_id", nullable = false)
+    private Movie movie;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "screen_id", nullable = false)
