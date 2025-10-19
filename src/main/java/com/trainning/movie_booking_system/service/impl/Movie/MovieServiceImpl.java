@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.service.impl;
+package com.trainning.movie_booking_system.service.impl.Movie;
 
 import com.trainning.movie_booking_system.dto.request.Movie.MovieRequest;
 import com.trainning.movie_booking_system.dto.request.Movie.UpdateMovieRequest;
@@ -9,7 +9,7 @@ import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.mapper.MovieMapper;
 import com.trainning.movie_booking_system.repository.MovieRepository;
-import com.trainning.movie_booking_system.service.MovieService;
+import com.trainning.movie_booking_system.service.Movie.MovieService;
 import com.trainning.movie_booking_system.untils.enums.MovieStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

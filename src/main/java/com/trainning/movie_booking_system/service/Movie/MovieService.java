@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.service;
+package com.trainning.movie_booking_system.service.Movie;
 
 import com.trainning.movie_booking_system.dto.request.Movie.MovieRequest;
 import com.trainning.movie_booking_system.dto.request.Movie.UpdateMovieRequest;

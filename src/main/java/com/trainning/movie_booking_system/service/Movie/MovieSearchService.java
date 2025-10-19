@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.service;
+package com.trainning.movie_booking_system.service.Movie;
 
 import com.trainning.movie_booking_system.dto.request.Movie.MovieSearchFilter;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;

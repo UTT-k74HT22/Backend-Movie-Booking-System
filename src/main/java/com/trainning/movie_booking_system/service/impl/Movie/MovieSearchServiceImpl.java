@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.service.impl;
+package com.trainning.movie_booking_system.service.impl.Movie;
 
 import com.trainning.movie_booking_system.dto.request.Movie.MovieSearchFilter;
 import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
@@ -7,7 +7,7 @@ import com.trainning.movie_booking_system.entity.Movie;
 import com.trainning.movie_booking_system.helper.specification.MovieSpecs;
 import com.trainning.movie_booking_system.mapper.MovieMapper;
 import com.trainning.movie_booking_system.repository.MovieRepository;
-import com.trainning.movie_booking_system.service.MovieSearchService;
+import com.trainning.movie_booking_system.service.Movie.MovieSearchService;
 import com.trainning.movie_booking_system.untils.enums.MovieSortField;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
