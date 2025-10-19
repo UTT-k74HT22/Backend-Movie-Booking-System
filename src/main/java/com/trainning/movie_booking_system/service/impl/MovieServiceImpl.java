@@ -7,12 +7,15 @@ import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.entity.Movie;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
+import com.trainning.movie_booking_system.mapper.MovieMapper;
 import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.service.MovieService;
 import com.trainning.movie_booking_system.untils.enums.MovieStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -109,19 +112,31 @@ public class MovieServiceImpl implements MovieService {
      */
     @Override
     public MovieResponse getById(Long movieId) {
-        return null;
+        log.info("[MOVIE SERVICE] - Get movie with ID: {}", movieId);
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
+
+        return toMovieResponse(movie);
     }
 
     /**
      * Get all movies with pagination
      *
-     * @param page the page number
-     * @param size the size of the page
+     * @param pageNumber the page number
+     * @param pageSize the size of the page
      * @return a paginated response of movies
      */
     @Override
-    public PageResponse<?> getAll(int page, int size) {
-        return null;
+    public PageResponse<?> getAll(int pageNumber, int pageSize) {
+        log.info("[MOVIE SERVICE] - Get all movies - Page: {}, Size: {}", pageNumber, pageSize);
+
+        if (pageNumber < 0 || pageSize < 0) {
+            throw new BadRequestException("Invalid PageNumber and PageSize");
+        }
+
+        Page<MovieResponse> movieResponse = movieRepository.findAll(PageRequest.of(pageNumber, pageSize))
+                .map(MovieMapper::toMovieResponse);
+        return PageResponse.of(movieResponse);
     }
 
     /**
@@ -131,7 +146,8 @@ public class MovieServiceImpl implements MovieService {
      */
     @Override
     public long countTotalMovies() {
-        return 0;
+        log.info("[MOVIE SERVICE] - Counting total movies");
+        return movieRepository.count();
     }
 
     //====================================== Private methods =====================================//

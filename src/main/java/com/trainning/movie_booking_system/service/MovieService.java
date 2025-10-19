@@ -41,11 +41,11 @@ public interface MovieService {
 
     /**
      * Get all movies with pagination
-     * @param page the page number
-     * @param size the size of the page
+     * @param pageSize the page number
+     * @param pageNumber the size of the page
      * @return a paginated response of movies
      */
-    PageResponse<?> getAll(int page, int size);
+    PageResponse<?> getAll(int pageSize, int pageNumber);
 
     /**
      * Count total number of movies

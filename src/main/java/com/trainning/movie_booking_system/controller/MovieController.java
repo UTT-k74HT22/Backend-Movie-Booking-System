@@ -84,7 +84,7 @@ public class MovieController {
     public ResponseEntity<?> getAlls(@RequestParam(name = "pageNumber", defaultValue = "0") int pageNumber,
                                      @RequestParam(name = "pageSize", defaultValue = "10") int pageSize) {
         log.info("[MOVIE-CONTROLLER] Get all movies request: {}, {}", pageSize, pageNumber);
-        return ResponseEntity.ok(BaseResponse.success(movieService.getAll(pageNumber, pageNumber)));
+        return ResponseEntity.ok(BaseResponse.success(movieService.getAll(pageNumber, pageSize)));
     }
 
     /**
