@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.service;
 
 import com.trainning.movie_booking_system.dto.request.Movie.MovieRequest;
+import com.trainning.movie_booking_system.dto.request.Movie.UpdateMovieRequest;
 import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.untils.enums.MovieStatus;
@@ -21,7 +22,7 @@ public interface MovieService {
      * @param request the movie request
      * @return the updated movie response
      */
-    MovieResponse update(Long movieId, MovieRequest request);
+    MovieResponse update(Long movieId, UpdateMovieRequest request);
 
     /**
      * Delete a movie by its ID

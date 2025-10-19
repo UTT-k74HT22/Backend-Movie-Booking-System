@@ -1,10 +1,12 @@
 package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.dto.request.Movie.MovieRequest;
+import com.trainning.movie_booking_system.dto.request.Movie.UpdateMovieRequest;
 import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.entity.Movie;
 import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.service.MovieService;
 import com.trainning.movie_booking_system.untils.enums.MovieStatus;
@@ -66,8 +68,25 @@ public class MovieServiceImpl implements MovieService {
      */
     @Transactional
     @Override
-    public MovieResponse update(Long movieId, MovieRequest request) {
-        return null;
+    public MovieResponse update(Long movieId, UpdateMovieRequest request) {
+        log.info("[MOVIE SERVICE] - Update movie ID: {}, request: {}", movieId, request);
+
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
+
+        // Chỉ update khi có giá trị mới
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            if (!movie.getTitle().equalsIgnoreCase(request.getTitle().trim())
+                    && movieRepository.existsByTitle(request.getTitle().trim())) {
+                throw new BadRequestException("Movie with the given title already exists");
+            }
+            movie.setTitle(request.getTitle().trim());
+        }
+        updateFiled(request, movie);
+        movieRepository.save(movie);
+        log.info("[MOVIE SERVICE] - Movie updated successfully: {}", movieId);
+
+        return toMovieResponse(movie);
     }
 
     /**
@@ -130,4 +149,39 @@ public class MovieServiceImpl implements MovieService {
                 .status(request.getStatus())
                 .build();
     }
+
+    private static void updateFiled(UpdateMovieRequest request, Movie movie) {
+        if (request.getDescription() != null)
+            movie.setDescription(request.getDescription());
+
+        if (request.getDuration() != null)
+            movie.setDuration(request.getDuration());
+
+        if (request.getReleaseDate() != null && !request.getReleaseDate().isBlank()) {
+            try {
+                movie.setReleaseDate(LocalDate.parse(request.getReleaseDate().trim()));
+            } catch (DateTimeParseException e) {
+                throw new BadRequestException("Invalid release date format. Expected yyyy-MM-dd");
+            }
+        }
+
+        if (request.getPosterUrl() != null)
+            movie.setPosterUrl(request.getPosterUrl());
+
+        if (request.getTrailerUrl() != null)
+            movie.setTrailerUrl(request.getTrailerUrl());
+
+        if (request.getRating() != null)
+            movie.setRating(BigDecimal.valueOf(request.getRating()));
+
+        if (request.getGenre() != null)
+            movie.setGenre(request.getGenre());
+
+        if (request.getLanguage() != null)
+            movie.setLanguage(request.getLanguage());
+
+        if (request.getStatus() != null)
+            movie.setStatus(request.getStatus());
+    }
+
 }
