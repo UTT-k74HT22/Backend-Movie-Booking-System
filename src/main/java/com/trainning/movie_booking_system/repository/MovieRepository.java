@@ -6,4 +6,13 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MovieRepository extends JpaRepository<Movie, Long> {
+
+    /**
+     * Check if a movie exists by its title
+     *
+     * @param title the title of the movie
+     * @return true if a movie with the given title exists, false otherwise
+     */
+    boolean existsByTitle(String title);
+
 }

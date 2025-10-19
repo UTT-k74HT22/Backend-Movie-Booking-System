@@ -16,7 +16,12 @@ public class MovieMapper {
                 .title(movie.getTitle())
                 .description(movie.getDescription())
                 .genre(movie.getGenre())
+                .language(movie.getLanguage())
                 .duration(movie.getDuration())
+                .releaseDate(movie.getReleaseDate() != null ? movie.getReleaseDate().toString() : null)
+                .posterUrl(movie.getPosterUrl())
+                .trailerUrl(movie.getTrailerUrl())
+                .rating(movie.getRating() != null ? movie.getRating().doubleValue() : null)
                 .status(movie.getStatus())
                 .build();
     }
