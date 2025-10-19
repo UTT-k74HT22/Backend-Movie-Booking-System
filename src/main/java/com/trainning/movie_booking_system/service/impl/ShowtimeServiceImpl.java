@@ -9,6 +9,7 @@ import com.trainning.movie_booking_system.entity.Showtime;
 import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
+import com.trainning.movie_booking_system.mapper.ShowtimeMapper;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
@@ -16,6 +17,8 @@ import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import static com.trainning.movie_booking_system.mapper.ShowtimeMapper.toShowtimeResponse;
 
@@ -121,7 +124,10 @@ public class ShowtimeServiceImpl implements ShowtimeService {
      */
     @Override
     public void delete(Long id, ShowtimeStatus status) {
-
+        log.info("[SHOWTIME SERVICE]: Deleting showtime ID {}", id);
+        Showtime showtime = getShowtime(id);
+        showtime.setStatus(status);
+        showtimeRepository.save(showtime);
     }
 
     /**
@@ -132,7 +138,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
      */
     @Override
     public ShowtimeResponse getById(Long id) {
-        return null;
+        log.info("[SHOWTIME SERVICE]: Retrieving showtime ID {}", id);
+        Showtime showtime = getShowtime(id);
+        return toShowtimeResponse(showtime);
     }
 
     /**
@@ -144,7 +152,15 @@ public class ShowtimeServiceImpl implements ShowtimeService {
      */
     @Override
     public PageResponse<?> getAll(int pageNumber, int pageSize) {
-        return null;
+        log.info("[SHOWTIME SERVICE]: Retrieving all showtimes - Page: {}, Size: {}", pageNumber, pageSize);
+
+        if (pageNumber < 0 || pageSize < 0) {
+            throw new BadRequestException("Invalid PageNumber and PageSize");
+        }
+
+        Page<ShowtimeResponse> showtimeResponses = showtimeRepository.findAll(PageRequest.of(pageNumber, pageSize))
+                .map(ShowtimeMapper::toShowtimeResponse);
+        return PageResponse.of(showtimeResponses);
     }
 
     /**
@@ -154,7 +170,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
      */
     @Override
     public long countShowtime() {
-        return 0;
+        log.info("[SHOWTIME SERVICE]: Counting total showtimes");
+        return showtimeRepository.count();
     }
 
     //====================== PRIVATE METHOD ====================//
