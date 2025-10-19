@@ -2,11 +2,16 @@ package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.dto.request.Theater.TheaterRequest;
 import com.trainning.movie_booking_system.dto.request.Theater.UpdateTheaterRequest;
+import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
+import com.trainning.movie_booking_system.entity.Movie;
 import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.exception.NotFoundException;
+import com.trainning.movie_booking_system.mapper.MovieMapper;
 import com.trainning.movie_booking_system.mapper.TheaterMapper;
+import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.TheaterService;
 import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
@@ -19,6 +24,8 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import java.util.List;
 import static com.trainning.movie_booking_system.mapper.TheaterMapper.toTheaterResponse;
 
 @Service
@@ -27,6 +34,7 @@ import static com.trainning.movie_booking_system.mapper.TheaterMapper.toTheaterR
 public class TheaterServiceImpl  implements TheaterService {
 
     private final TheaterRepository theaterRepository;
+    private final ShowtimeRepository showtimeRepository;
 
     /**
      * Create a new theater
@@ -134,6 +142,38 @@ public class TheaterServiceImpl  implements TheaterService {
         Page<TheaterResponse> theaterResponses = theaterRepository.findAll(PageRequest.of(pageNumber, pageSize))
                 .map(TheaterMapper::toTheaterResponse);
         return PageResponse.of(theaterResponses);
+    }
+
+    /**
+     * Get movies by theater and date
+     *
+     * @param theaterId theater id
+     * @param date      date to filter movies
+     * @return list of movie responses
+     */
+    @Cacheable(value = "theater:movies", key = "#theaterId + ':' + #date")
+    @Override
+    public List<MovieResponse> getMoviesByTheater(Long theaterId, LocalDate date) {
+        log.info("[THEATER SERVICE] Fetching movies for theaterId={} on date={}", theaterId, date);
+
+        if (date == null) {
+            date = LocalDate.now();
+        }
+
+        if (!theaterRepository.existsById(theaterId)) {
+            throw new NotFoundException("Theater not found with ID: " + theaterId);
+        }
+
+        List<Movie> movies = showtimeRepository.findMoviesByTheaterAndDate(theaterId, date);
+        log.info("[DEBUG] Found {} movies for theaterId={}, date={}, dateType={}",
+                movies.size(), theaterId, date, date.getClass().getSimpleName());
+        if (movies.isEmpty()) {
+            log.info("[THEATER SERVICE] No movies found for theater {}", theaterId);
+        }
+
+        return movies.stream()
+                .map(MovieMapper::toMovieResponse)
+                .toList();
     }
 
     /**
