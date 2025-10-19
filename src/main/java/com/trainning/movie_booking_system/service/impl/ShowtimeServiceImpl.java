@@ -2,6 +2,7 @@ package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.dto.request.Showtime.ShowtimeRequest;
 import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeRequest;
+import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeByScreenResponse;
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.entity.Movie;
@@ -18,9 +19,15 @@ import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import static com.trainning.movie_booking_system.mapper.ShowtimeMapper.toShowtimeResponse;
 
 @Service
@@ -172,6 +179,52 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         Page<ShowtimeResponse> showtimeResponses = showtimeRepository.findAll(PageRequest.of(pageNumber, pageSize))
                 .map(ShowtimeMapper::toShowtimeResponse);
         return PageResponse.of(showtimeResponses);
+    }
+
+    /**
+     * Get showtimes by theater and movie on a specific date.
+     *
+     * @param theaterId the ID of the theater
+     * @param movieId   the ID of the movie
+     * @param date      the date for which to retrieve showtimes
+     * @return a list of showtimes grouped by screen
+     */
+    @Cacheable(value = "showtimes:theater-movie", key = "#theaterId + ':' + #movieId + ':' + #date")
+    @Override
+    public List<ShowtimeByScreenResponse> findByTheaterAndMovie(Long theaterId, Long movieId, LocalDate date) {
+        log.info("[SHOWTIME SERVICE] Get showtimes for theater={}, movie={}, date={}", theaterId, movieId, date);
+
+        if (date == null) {
+            date = LocalDate.now();
+        }
+
+        List<Showtime> showtimes = showtimeRepository.findShowtimesByTheaterAndMovieAndDate(theaterId, movieId, date);
+        if (showtimes.isEmpty()) {
+            log.warn("[SHOWTIME SERVICE] No showtimes found for theater={}, movie={}, date={}", theaterId, movieId, date);
+            return List.of();
+        }
+
+        // Nhóm theo phòng chiếu
+        Map<String, List<ShowtimeByScreenResponse.ShowtimeSlotResponse>> grouped = showtimes.stream()
+                .collect(Collectors.groupingBy(
+                        s -> s.getScreen().getName(),
+                        LinkedHashMap::new,
+                        Collectors.mapping(s -> ShowtimeByScreenResponse.ShowtimeSlotResponse.builder()
+                                        .id(s.getId())
+                                        .startTime(s.getStartTime().toString())
+                                        .endTime(s.getEndTime().toString())
+                                        .price(s.getPrice().doubleValue())
+                                        .build(),
+                                Collectors.toList())
+                ));
+
+        // Trả về list
+        return grouped.entrySet().stream()
+                .map(e -> ShowtimeByScreenResponse.builder()
+                        .screenName(e.getKey())
+                        .showtimes(e.getValue())
+                        .build())
+                .toList();
     }
 
     /**
