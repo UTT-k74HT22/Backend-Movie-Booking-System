@@ -131,7 +131,6 @@ public class TheaterServiceImpl  implements TheaterService {
      * @return paginated theater response
      */
     @Override
-    @Cacheable(value = "theaters:all", key = "#pageNumber + ':' + #pageSize")
     public PageResponse<?> getAlls(int pageNumber, int pageSize) {
         log.info("[THEATER SERVICE] Fetching all theaters - Page: {}, Size: {}", pageNumber, pageSize);
 
