@@ -2,9 +2,13 @@ package com.trainning.movie_booking_system.service;
 
 import com.trainning.movie_booking_system.dto.request.Showtime.ShowtimeRequest;
 import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeRequest;
+import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeByScreenResponse;
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+
+import java.time.LocalDate;
+import java.util.List;
 
 public interface ShowtimeService {
 
@@ -48,6 +52,18 @@ public interface ShowtimeService {
      * @return a paginated response of showtimes
      */
     PageResponse<?> getAll(int pageNumber, int pageSize);
+
+    /**
+     * Get showtimes by theater and movie on a specific date.
+     *
+     * @param theaterId the ID of the theater
+     * @param movieId   the ID of the movie
+     * @param date      the date for which to retrieve showtimes
+     * @return a list of showtimes grouped by screen
+     */
+    List<ShowtimeByScreenResponse> findByTheaterAndMovie(Long theaterId,
+                                                         Long movieId,
+                                                         LocalDate date);
 
     /**
      * Count the total number of showtimes.

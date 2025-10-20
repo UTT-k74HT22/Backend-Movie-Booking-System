@@ -8,10 +8,12 @@ import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/theaters")
@@ -86,6 +88,25 @@ public class TheaterController {
                                      @RequestParam(defaultValue = "10") int pageSize) {
         log.info("[THEATER-CONTROLLER] Get all theaters request: {}, {}", pageNumber, pageSize);
         return ResponseEntity.ok(BaseResponse.success(theaterService.getAlls(pageNumber, pageSize)));
+    }
+
+    /**
+     * Get movies by theater and date
+     *
+     * @param theaterId theater id
+     * @param date      date to filter movies
+     * @return list of movie responses
+     */
+    @GetMapping("/{theaterId}/movies")
+    public ResponseEntity<?> getMoviesByTheater(
+            @PathVariable Long theaterId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date) {
+        log.info("[THEATER CONTROLLER] Get movies for theaterId={} date={}", theaterId, date);
+        return ResponseEntity.ok(BaseResponse.success(
+                theaterService.getMoviesByTheater(theaterId, date)
+        ));
     }
 
     /**

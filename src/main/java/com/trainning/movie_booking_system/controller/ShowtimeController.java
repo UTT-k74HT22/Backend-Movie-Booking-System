@@ -8,10 +8,12 @@ import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/showtimes")
@@ -88,6 +90,25 @@ public class ShowtimeController {
         log.info("[SHOWTIME-CONTROLLER] Get all showtimes request: pageNumber={}, pageSize={}", pageNumber, pageSize);
         return ResponseEntity.ok(BaseResponse.success(showtimeService.getAll(pageNumber, pageSize)));
     }
+
+    /**
+     * Get showtimes by theater and movie on a specific date
+     *
+     * @param theaterId theater id
+     * @param movieId   movie id
+     * @param date      date to filter showtimes
+     * @return list of showtimes grouped by screen
+     */
+    @GetMapping("/by-theater-and-movie")
+    public ResponseEntity<?> getShowtimes(
+            @RequestParam Long theaterId,
+            @RequestParam Long movieId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        log.info("[SHOWTIME CONTROLLER] theaterId={}, movieId={}, date={}", theaterId, movieId, date);
+        return ResponseEntity.ok(BaseResponse.success(showtimeService.findByTheaterAndMovie(theaterId, movieId, date)));
+    }
+
 
     /**
      * Count total number of showtimes
