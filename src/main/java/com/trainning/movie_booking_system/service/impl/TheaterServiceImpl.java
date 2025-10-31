@@ -117,7 +117,6 @@ public class TheaterServiceImpl  implements TheaterService {
      * @return theater response object
      */
     @Override
-    @Cacheable(value = "theater:detail", key = "#theaterId")
     public TheaterResponse getById(Long theaterId) {
         log.info("[THEATER SERVICE] Fetching theater with ID: {}", theaterId);
         return toTheaterResponse(getTheaterById(theaterId));

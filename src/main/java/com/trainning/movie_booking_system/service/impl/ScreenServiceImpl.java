@@ -4,12 +4,10 @@ import com.trainning.movie_booking_system.dto.request.Screen.ScreenRequest;
 import com.trainning.movie_booking_system.dto.request.Screen.UpdateScreenRequest;
 import com.trainning.movie_booking_system.dto.response.Screen.ScreenResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
-import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
 import com.trainning.movie_booking_system.entity.Screen;
 import com.trainning.movie_booking_system.entity.Theater;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.mapper.ScreenMapper;
-import com.trainning.movie_booking_system.mapper.TheaterMapper;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.ScreenService;
@@ -23,9 +21,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
-
 import static com.trainning.movie_booking_system.mapper.ScreenMapper.toScreenResponse;
 
 @Service
@@ -111,7 +107,6 @@ public class ScreenServiceImpl implements ScreenService {
      * @return screen response object
      */
     @Override
-    @Cacheable(value = "screen:detail", key = "#screenId")
     public ScreenResponse getById(Long screenId) {
         log.info("[SCREEN-SERVICE] Get screen by id request: {}", screenId);
         return toScreenResponse(getScreenById(screenId));

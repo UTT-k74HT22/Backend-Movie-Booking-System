@@ -101,7 +101,11 @@ public class MovieServiceImpl implements MovieService {
     @Transactional
     @Override
     public void delete(Long movieId, MovieStatus movieStatus) {
-
+        log.info("MOVIE SERVICE] - Delete movie with ID: {}", movieId);
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
+        movie.setStatus(movieStatus);
+        movieRepository.save(movie);
     }
 
     /**
