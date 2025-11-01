@@ -15,11 +15,12 @@ public class SeatRequest {
     private Long screenId;
 
     @NotNull(message = "Seat number cannot be null")
-    private String seatNumber;
+    private Integer seatNumber;
 
-    @NotNull
+    @NotNull(message = "Row label cannot be null")
     private String rowLabel;
 
+    @NotNull(message = "Seat type cannot be null")
     private SeatType seatType;
 
     private SeatStatus status;

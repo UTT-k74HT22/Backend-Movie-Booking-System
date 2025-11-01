@@ -5,6 +5,8 @@ import com.trainning.movie_booking_system.dto.response.Seat.SeatResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.untils.enums.SeatStatus;
 
+import java.util.List;
+
 public interface SeatService {
 
     /**
@@ -38,7 +40,7 @@ public interface SeatService {
      * @param pageSize the number of seats per page
      * @return a PageResponse containing the list of SeatResponse
      */
-    PageResponse<?> getAlls(int pageNumber, int pageSize);
+    PageResponse<SeatResponse> getAlls(int pageNumber, int pageSize);
 
     /**
      * Retrieve a seat by its ID.
@@ -47,4 +49,21 @@ public interface SeatService {
      * @return the SeatResponse corresponding to the given ID
      */
     SeatResponse getById(Long id);
+
+    /**
+     * Retrieve all seats by screen ID.
+     *
+     * @param screenId the ID of the screen
+     * @return list of SeatResponse
+     */
+    List<SeatResponse> getSeatsByScreenId(Long screenId);
+
+    /**
+     * Retrieve seats by screen ID and status.
+     *
+     * @param screenId the ID of the screen
+     * @param status the status of the seat
+     * @return list of SeatResponse
+     */
+    List<SeatResponse> getSeatsByScreenIdAndStatus(Long screenId, SeatStatus status);
 }

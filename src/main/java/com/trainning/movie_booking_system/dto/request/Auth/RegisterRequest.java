@@ -37,6 +37,6 @@ public class RegisterRequest {
     @NotBlank(message = "Phone number not blank")
     @Size(min = 10, max = 15, message = "Phone number must be 10 characters long")
     private String phoneNumber;
-}
+}   
 
 

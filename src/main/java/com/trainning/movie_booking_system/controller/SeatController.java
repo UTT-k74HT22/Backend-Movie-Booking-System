@@ -3,6 +3,7 @@ package com.trainning.movie_booking_system.controller;
 import com.trainning.movie_booking_system.dto.request.Seat.SeatRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.SeatService;
+import com.trainning.movie_booking_system.untils.enums.SeatStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,5 +80,32 @@ public class SeatController {
     public ResponseEntity<?> getAlls(@RequestParam int pageNumber, @RequestParam int pageSize) {
         log.info("[SEAT-CONTROLLER] Get all seats request: {}, {}", pageNumber, pageSize);
         return ResponseEntity.ok(BaseResponse.success(seatService.getAlls(pageNumber, pageSize)));
+    }
+
+    /**
+     * Get all seats by screen ID
+     *
+     * @param screenId screen id
+     * @return list of seat response objects
+     */
+    @GetMapping("/screen/{screenId}")
+    public ResponseEntity<?> getSeatsByScreenId(@PathVariable Long screenId) {
+        log.info("[SEAT-CONTROLLER] Get seats by screen id request: {}", screenId);
+        return ResponseEntity.ok(BaseResponse.success(seatService.getSeatsByScreenId(screenId)));
+    }
+
+    /**
+     * Get seats by screen ID and status
+     *
+     * @param screenId screen id
+     * @param status seat status
+     * @return list of seat response objects
+     */
+    @GetMapping("/screen/{screenId}/status/{status}")
+    public ResponseEntity<?> getSeatsByScreenIdAndStatus(
+            @PathVariable Long screenId,
+            @PathVariable SeatStatus status) {
+        log.info("[SEAT-CONTROLLER] Get seats by screen id: {} and status: {}", screenId, status);
+        return ResponseEntity.ok(BaseResponse.success(seatService.getSeatsByScreenIdAndStatus(screenId, status)));
     }
 }
