@@ -144,7 +144,17 @@ public class SeatServiceImpl implements SeatService {
                 .map(SeatMapper::toResponse)
                 .collect(Collectors.toList());
 
-        return new PageResponse<>(pageNumber, pageSize, page.getTotalElements(), content);
+        return PageResponse.<SeatResponse>builder()
+                .content(content)
+                .pageNumber(pageNumber)
+                .pageSize(pageSize)
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
+                .build();
     }
 
     /**
