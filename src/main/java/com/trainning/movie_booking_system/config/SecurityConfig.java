@@ -5,6 +5,7 @@ import com.trainning.movie_booking_system.security.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -21,7 +22,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import java.util.List;
+
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
@@ -33,7 +36,8 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtFilter jwtFilter;
 
-    public static final String[] PUBLIC_URL = {
+    // Endpoints hoàn toàn public (không cần auth)
+    public static final String[] PUBLIC_AUTH_ENDPOINTS = {
             "/",
             "/api/auth/register",
             "/api/auth/login",
@@ -48,6 +52,14 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**"
+    };
+
+    // Chỉ cho phép GET public, các method khác cần ADMIN
+    public static final String[] PUBLIC_GET_ENDPOINTS = {
+            "/api/movies/**",
+            "/api/theaters/**",
+            "/api/showtimes/**",
+            "/api/seats/**"
     };
 
     @Bean
@@ -72,16 +84,27 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(withDefaults())
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers(PUBLIC_URL).permitAll()
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(authz -> authz
+                        // Endpoints hoàn toàn public
+                        .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
+
+                        // Chỉ GET là public, còn lại cần ADMIN
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
+
+                        // Tất cả request khác cần authenticated
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
