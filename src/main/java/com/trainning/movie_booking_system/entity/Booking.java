@@ -47,6 +47,11 @@ public class Booking extends BaseEntity {
     @Column(name = "booking_date", nullable = false)
     private LocalDateTime bookingDate;
 
-//    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private List<BookingSeat> bookingSeats = new ArrayList<>();
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookingSeat> bookingSeats = new ArrayList<>();
+
+    @PrePersist
+    protected void onCreate() {
+        bookingDate = LocalDateTime.now();
+    }
 }
