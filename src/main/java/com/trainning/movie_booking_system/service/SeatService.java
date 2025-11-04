@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.service;
 
 import com.trainning.movie_booking_system.dto.request.Seat.SeatRequest;
+import com.trainning.movie_booking_system.dto.request.Seat.SeatGenerationRequest;
 import com.trainning.movie_booking_system.dto.response.Seat.SeatResponse;
 import com.trainning.movie_booking_system.untils.enums.SeatStatus;
 import org.springframework.data.domain.Page;
@@ -56,7 +57,26 @@ public interface SeatService {
      * @param screenId screen id
      * @return list of seat response objects
      */
-    List<SeatResponse> getSeatsByScreenId(Long screenId);
+    List<SeatResponse> getByScreenId(Long screenId);
+    
+    /**
+     * Get seats by screen ID (alias for getByScreenId)
+     *
+     * @param screenId screen id
+     * @return list of seat response objects
+     */
+    default List<SeatResponse> getSeatsByScreenId(Long screenId) {
+        return getByScreenId(screenId);
+    }
+    
+    /**
+     * Generate seats for a screen based on the provided configuration
+     * 
+     * @param screenId the ID of the screen
+     * @param request the seat generation configuration
+     * @return list of created seat responses
+     */
+    List<SeatResponse> generateSeats(Long screenId, SeatGenerationRequest request);
 
     /**
      * Get seats by screen ID and status

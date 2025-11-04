@@ -12,27 +12,45 @@ import java.util.Optional;
 
 @Repository
 public interface SeatRepository extends JpaRepository<Seat, Long> {
-
-    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId")
+    /*
+    * Soft delete
+    * Không hiển thị dữ liệu đã bị xóa,
+    * ví dụ: khi tìm kiếm ghế theo screenId, chỉ trả về những ghế chưa bị xóa mềm (isDeleted = false)
+    * Không hiển thị dữ liệu đã bị xóa,
+    * Không hiển thị dữ liệu đã bị xóa,
+    * */
+    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.isDeleted = false")
     List<Seat> findByScreenId(@Param("screenId") Long screenId);
 
-    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.status = :status")
+    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.status = :status AND s.isDeleted = false")
     List<Seat> findByScreenIdAndStatus(@Param("screenId") Long screenId, @Param("status") SeatStatus status);
 
-    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.rowLabel = :rowLabel AND s.seatNumber = :seatNumber")
+    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.rowLabel = :rowLabel AND s.seatNumber = :seatNumber AND s.isDeleted = false")
     Optional<Seat> findByScreenIdAndRowLabelAndSeatNumber(
             @Param("screenId") Long screenId,
             @Param("rowLabel") String rowLabel,
             @Param("seatNumber") int seatNumber
     );
 
-    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Seat s WHERE s.screen.id = :screenId AND s.rowLabel = :rowLabel AND s.seatNumber = :seatNumber")
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END " +
+            "FROM Seat s WHERE s.screen.id = :screenId AND s.rowLabel = :rowLabel AND s.seatNumber = :seatNumber AND s.isDeleted = false")
     boolean existsByScreenIdAndRowLabelAndSeatNumber(
             @Param("screenId") Long screenId,
             @Param("rowLabel") String rowLabel,
             @Param("seatNumber") int seatNumber
     );
 
-    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId ORDER BY s.rowLabel, s.seatNumber")
+    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.isDeleted = false ORDER BY s.rowLabel, s.seatNumber")
     List<Seat> findAllByScreenIdOrderByRowLabelAndSeatNumber(@Param("screenId") Long screenId);
+
+    /**
+     * Check existence of any seats for a given screen id
+     */
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Seat s WHERE s.screen.id = :screenId AND s.isDeleted = false")
+    boolean existsByScreen_Id(@Param("screenId") Long screenId);
+
+
+    // Nếu bạn muốn truy cập danh sách ghế đã bị xóa mềm
+    @Query("SELECT s FROM Seat s WHERE s.screen.id = :screenId AND s.isDeleted = true ORDER BY s.rowLabel, s.seatNumber")
+    List<Seat> findDeletedByScreenId(@Param("screenId") Long screenId);
 }

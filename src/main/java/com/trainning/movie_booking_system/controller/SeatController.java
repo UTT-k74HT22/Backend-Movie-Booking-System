@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.controller;
 
 import com.trainning.movie_booking_system.dto.request.Seat.SeatRequest;
+import com.trainning.movie_booking_system.dto.request.Seat.SeatGenerationRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.SeatService;
 import com.trainning.movie_booking_system.untils.enums.SeatStatus;
@@ -28,7 +29,7 @@ public class SeatController {
      * @return seat response object
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> create(@RequestBody @Valid SeatRequest request) {
         log.info("[SEAT-CONTROLLER] Create seat request: {}", request);
         return ResponseEntity.ok(BaseResponse.success(seatService.create(request)));
@@ -59,7 +60,23 @@ public class SeatController {
     public ResponseEntity<?> delete(@PathVariable Long seatId) {
         log.info("[SEAT-CONTROLLER] Delete seat request: {}", seatId);
         seatService.delete(seatId);
-        return ResponseEntity.ok(BaseResponse.success());
+        return ResponseEntity.ok(BaseResponse.success("Seat deleted successfully"));
+    }
+
+    /**
+     * Generate seats for a screen
+     *
+     * @param screenId the ID of the screen
+     * @param request the seat generation configuration
+     * @return list of created seats
+     */
+    @PostMapping("/generate/{screenId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<?> generateSeats(
+            @PathVariable Long screenId,
+            @RequestBody @Valid SeatGenerationRequest request) {
+        log.info("[SEAT-CONTROLLER] Generate seats request for screen {}: {}", screenId, request);
+        return ResponseEntity.ok(BaseResponse.success(seatService.generateSeats(screenId, request)));
     }
 
     /**
