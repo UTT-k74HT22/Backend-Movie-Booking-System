@@ -12,9 +12,9 @@ import java.util.List;
 @Table(
         name = "bookings",
         indexes = {
-                @Index(name = "idx_booking_user", columnList = "user_id"),
+                @Index(name = "idx_booking_account", columnList = "account_id"),
                 @Index(name = "idx_booking_showtime", columnList = "showtime_id"),
-                @Index(name = "idx_booking_voucher", columnList = "voucher_id"),
+//                @Index(name = "idx_booking_voucher", columnList = "voucher_id"),
                 @Index(name = "idx_booking_status", columnList = "status")
         }
 )
@@ -26,8 +26,8 @@ import java.util.List;
 public class Booking extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "showtime_id", nullable = false)

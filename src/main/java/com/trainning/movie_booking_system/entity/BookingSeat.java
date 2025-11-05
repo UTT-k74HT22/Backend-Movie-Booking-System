@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 @Table(
         name = "booking_seats",
         indexes = {
-                @Index(name = "idx_booking", columnList = "booking_id"),
-                @Index(name = "idx_seat", columnList = "seat_id"),
+                @Index(name = "idx_booking", columnList = "booking_id")
+//                @Index(name = "idx_seat", columnList = "seat_id"),
         }
 )
 @Getter
