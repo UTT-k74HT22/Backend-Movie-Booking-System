@@ -48,6 +48,7 @@ public class Booking extends BaseEntity {
     private LocalDateTime bookingDate;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<BookingSeat> bookingSeats = new ArrayList<>();
 
     @PrePersist

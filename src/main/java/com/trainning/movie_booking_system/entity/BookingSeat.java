@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 @Table(
         name = "booking_seats",
         indexes = {
-                @Index(name = "idx_booking", columnList = "booking_id")
-//                @Index(name = "idx_seat", columnList = "seat_id"),
+                @Index(name = "idx_booking", columnList = "booking_id"),
+                @Index(name = "idx_booking_seat", columnList = "seat_id")
         }
 )
 @Getter
@@ -24,7 +24,9 @@ public class BookingSeat extends BaseEntity {
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
-    private Long seatId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seat_id", nullable = false)
+    private Seat seat;
 
     private BigDecimal price;
 }

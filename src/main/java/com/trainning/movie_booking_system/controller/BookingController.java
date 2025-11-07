@@ -21,6 +21,7 @@ public class BookingController {
 
     /**
      * Create a new booking
+     * Sau khi tạo thành công, user cần redirect sang payment gateway
      *
      * @param request the booking request data
      * @return response entity with created booking
@@ -28,7 +29,14 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody @Valid BookingRequest request) {
         log.info("[BOOKING] Create request: {}", request);
-        return ResponseEntity.ok(BaseResponse.success(bookingService.create(request)));
+        var booking = bookingService.create(request);
+
+        // TODO: Frontend cần redirect user sang /api/payments/create/{bookingId}
+        log.info("[BOOKING] Booking {} created. Status: PENDING_PAYMENT. User needs to complete payment within 15 minutes.",
+                booking.getId());
+
+        return ResponseEntity.ok(BaseResponse.success(booking,
+                "Booking created successfully. Please complete payment within 15 minutes."));
     }
 
     /**

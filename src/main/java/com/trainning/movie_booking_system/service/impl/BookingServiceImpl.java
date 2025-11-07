@@ -6,18 +6,21 @@ import com.trainning.movie_booking_system.dto.response.Booking.BookingResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.entity.Booking;
 import com.trainning.movie_booking_system.entity.BookingSeat;
+import com.trainning.movie_booking_system.entity.Seat;
 import com.trainning.movie_booking_system.entity.Showtime;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.ConflictException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
-import com.trainning.movie_booking_system.helper.RedisLockService;
-import com.trainning.movie_booking_system.helper.SeatClient;
+import com.trainning.movie_booking_system.helper.redis.RedisLockService;
+import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
 import com.trainning.movie_booking_system.repository.BookingRepository;
 import com.trainning.movie_booking_system.repository.BookingSeatRepository;
+import com.trainning.movie_booking_system.repository.SeatRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.security.SecurityUtils;
 import com.trainning.movie_booking_system.service.BookingService;
 import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.untils.enums.SeatType;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +31,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.trainning.movie_booking_system.mapper.BookingMapper.toResponse;
@@ -38,13 +42,23 @@ import static com.trainning.movie_booking_system.mapper.BookingMapper.toResponse
 public class BookingServiceImpl implements BookingService {
 
     private final BookingSeatRepository bookingSeatRepository;
-    private final SeatClient seatClient;
+    private final SeatRepository seatRepository;
     private final BookingRepository bookingRepository;
     private final ShowtimeRepository showtimeRepository;
     private final RedisLockService redisLockService;
+    private final SeatDomainService seatClient;
 
     /**
      * Create a new booking
+     * Flow:
+     * 1. Validate input & showtime exists
+     * 2. Pre-check: Verify seats held by current user
+     * 3. Get seat infos for price calculation
+     * 4. Acquire distributed locks (sorted order to prevent deadlock)
+     * 5. Re-verify holds under lock (TOCTOU prevention)
+     * 6. Create booking transaction in DB
+     * 7. Consume Redis holds (seats now persisted in DB)
+     * 8. Release locks in finally block
      *
      * @param request the booking request data
      * @return the created booking response
@@ -53,92 +67,126 @@ public class BookingServiceImpl implements BookingService {
     public BookingResponse create(BookingRequest request) {
         log.info("[BOOKING] Create booking request: {}", request);
 
-        // ===== 1 Validate input =====
+        var currentUser = SecurityUtils.getCurrentUserDetails();
+        Long userId = currentUser.getAccount().getId();
+
+        // ===== 1. Validate input =====
         if (CollectionUtils.isEmpty(request.getSeatIds())) {
             throw new BadRequestException("Seat list must not be empty");
         }
 
-        // ===== 2 Call external service (ngoài transaction) =====
-        var showtime = showtimeRepository.findById(request.getShowtimeId())
+        // ===== 2. Validate showtime exists =====
+        Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                 .orElseThrow(() -> new NotFoundException("Showtime not found with ID: " + request.getShowtimeId()));
 
-        // Kiểm tra seat có tồn tại và chưa bị hold hết hạn
-        seatClient.validateSeatsAvailable(request.getShowtimeId(), request.getSeatIds());
-        var seatInfos = seatClient.getSeatInfos(request.getShowtimeId(), request.getSeatIds());
+        // ===== 3. Verify seats are held by current user (pre-check) =====
+        seatClient.assertHeldByUser(request.getShowtimeId(), request.getSeatIds(), userId);
 
-        // ===== 3 Lock theo cụm seat =====
-        String seatKeyGroup = request.getSeatIds().stream()
-                .sorted()
-                .map(String::valueOf)
-                .collect(Collectors.joining(","));
-        String lockKey = "seatLock:" + request.getShowtimeId() + ":" + seatKeyGroup;
+        // ===== 4. Get seat infos for price calculation =====
+        List<SeatInfo> seatInfos = seatClient.getSeatInfos(request.getSeatIds());
 
-        if (!redisLockService.tryLock(lockKey, 30, TimeUnit.SECONDS)) {
-            log.warn("[BOOKING] Lock not acquired for showtime {} seats {}",
-                    request.getShowtimeId(), request.getSeatIds());
-            throw new ConflictException("System is busy, please try again later.");
-        }
+        // ===== 5. Lock từng ghế riêng lẻ (tránh deadlock) =====
+        // Sort seats để đảm bảo lock order nhất quán
+        List<Long> sortedSeatIds = request.getSeatIds().stream().sorted().toList();
+        List<Long> lockedSeats = new ArrayList<>();
 
         try {
-            // ===== 4 Thực hiện booking trong transaction =====
-            return createBookingTransaction(showtime, seatInfos, request);
+            // Acquire locks
+            for (Long seatId : sortedSeatIds) {
+                if (!redisLockService.tryLockSeat(request.getShowtimeId(), seatId, 30, TimeUnit.SECONDS)) {
+                    throw new ConflictException(
+                        "Không thể lock ghế %d. Vui lòng thử lại.".formatted(seatId)
+                    );
+                }
+                lockedSeats.add(seatId);
+            }
+
+            // ===== 6. Re-verify holds under lock (tránh TOCTOU) =====
+            seatClient.assertHeldByUser(request.getShowtimeId(), request.getSeatIds(), userId);
+
+            // ===== 7. Create booking in transaction =====
+            BookingResponse response = createBookingTransaction(showtime, seatInfos, request, userId);
+
+            // ===== 8. CRITICAL: Consume hold to booked =====
+            seatClient.consumeHoldToBooked(request.getShowtimeId(), request.getSeatIds());
+
+            log.info("[BOOKING] Successfully created booking ID {} for user {}",
+                    response.getId(), userId);
+
+            return response;
+
         } finally {
-            redisLockService.releaseLock(lockKey);
+            // ===== 9. ALWAYS release locks =====
+            for (Long seatId : lockedSeats) {
+                redisLockService.releaseSeatLock(request.getShowtimeId(), seatId);
+            }
+            log.debug("[BOOKING] Released {} locks", lockedSeats.size());
         }
     }
 
-    // Transactional phần này riêng biệt
+    /**
+     * Transactional method để persist booking vào DB
+     * QUAN TRỌNG: Phải check DB seats đã booked cho ĐÚNG showtime này
+     */
     @Transactional
-    protected BookingResponse createBookingTransaction(Showtime showtime, List<SeatInfo> seatInfos, BookingRequest request) {
+    protected BookingResponse createBookingTransaction(
+            Showtime showtime,
+            List<SeatInfo> seatInfos,
+            BookingRequest request,
+            Long userId) {
 
-        // Check ghế đã bị book bởi người khác chưa (CONFIRMED / PENDING)
-        List<Long> bookedSeats = bookingRepository.findBookedSeatIds(
+        // Check ghế đã được booking trong DB cho showtime này
+        // (PENDING_PAYMENT hoặc CONFIRMED)
+        List<Long> bookedSeats = bookingSeatRepository.findBookedSeatIds(
                 request.getShowtimeId(),
-                List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING_PAYMENT),
-                request.getSeatIds());
-
+                List.of(BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED),
+                request.getSeatIds()
+        );
         if (!bookedSeats.isEmpty()) {
-            throw new BadRequestException("Seats already booked: " + bookedSeats);
+            throw new ConflictException(
+                "Ghế đã được đặt trong DB: %s. Có thể do race condition.".formatted(bookedSeats)
+            );
         }
 
-        // Build booking và seat detail
+        // Get account from SecurityContext
+        var account = SecurityUtils.getCurrentUserDetails().account();
+
         var booking = Booking.builder()
-                .account(SecurityUtils.getCurrentUserDetails().account())
+                .account(account)
                 .showtime(showtime)
                 .status(BookingStatus.PENDING_PAYMENT)
                 .build();
 
-        var bookingSeats = buildBookingSeats(booking, seatInfos, showtime.getPrice());
-        booking.setTotalPrice(
-                bookingSeats.stream()
-                        .map(BookingSeat::getPrice)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)
-        );
+        var seatIdToEntity = seatRepository.findAllById(
+                seatInfos.stream().map(SeatInfo::getSeatId).toList()
+        ).stream().collect(Collectors.toMap(Seat::getId, Function.identity()));
+
+        var bookingSeats = new ArrayList<BookingSeat>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (SeatInfo info : seatInfos) {
+            BigDecimal multiplier = (info.getSeatType() == SeatType.VIP) ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
+            BigDecimal price = showtime.getPrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+
+            bookingSeats.add(BookingSeat.builder()
+                    .booking(booking)
+                    .seat(seatIdToEntity.get(info.getSeatId()))
+                    .price(price)
+                    .build());
+            total = total.add(price);
+        }
+        booking.setTotalPrice(total);
 
         bookingRepository.save(booking);
         bookingSeatRepository.saveAll(bookingSeats);
+        booking.setBookingSeats(bookingSeats);
 
-        log.info("[BOOKING] Booking created with ID={}, totalPrice={}",
-                booking.getId(), booking.getTotalPrice());
         return toResponse(booking);
     }
 
-    private List<BookingSeat> buildBookingSeats(Booking booking, List<SeatInfo> seatInfos, BigDecimal basePrice) {
-        List<BookingSeat> bookingSeats = new ArrayList<>();
-        for (SeatInfo info : seatInfos) {
-            BigDecimal multiplier = switch (info.getSeatType()) {
-                case VIP -> BigDecimal.valueOf(1.3);
-                default -> BigDecimal.ONE;
-            };
-            BigDecimal seatPrice = basePrice.multiply(multiplier)
-                    .setScale(2, RoundingMode.HALF_UP);
-            bookingSeats.add(new BookingSeat(booking, info.getSeatId(), seatPrice));
-        }
-        return bookingSeats;
-    }
-
     /**
-     * Update an existing booking
+     * Update an existing booking - NOT SUPPORTED
+     * Booking should not be updated after creation
+     * User can only cancel via payment cancellation
      *
      * @param id      the ID of the booking to update
      * @param request the updated booking request data
@@ -146,17 +194,22 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     public BookingResponse update(Long id, BookingRequest request) {
-        return null;
+        throw new UnsupportedOperationException(
+            "Booking update is not supported. Please cancel and create a new booking."
+        );
     }
 
     /**
-     * Delete a booking by ID
+     * Delete a booking by ID - NOT SUPPORTED
+     * Booking should not be deleted, only cancelled via payment flow
      *
      * @param id the ID of the booking to delete
      */
     @Override
     public void delete(Long id) {
-
+        throw new UnsupportedOperationException(
+            "Booking deletion is not supported. Use payment cancellation instead."
+        );
     }
 
     /**
@@ -167,7 +220,12 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     public BookingResponse getById(Long id) {
-        return null;
+        log.info("[BOOKING] Get booking by id: {}", id);
+        
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with ID: " + id));
+        
+        return toResponse(booking);
     }
 
     /**
@@ -179,6 +237,11 @@ public class BookingServiceImpl implements BookingService {
      */
     @Override
     public PageResponse<?> getAlls(int pageNumber, int pageSize) {
-        return null;
+        log.info("[BOOKING] Get all bookings: page={}, size={}", pageNumber, pageSize);
+        
+        // TODO: Implement pagination with proper sorting
+        // TODO: Add filters (by user, by showtime, by status, by date range)
+        
+        throw new UnsupportedOperationException("Pagination not yet implemented");
     }
 }

@@ -2,6 +2,7 @@ package com.trainning.movie_booking_system.mapper;
 
 import com.trainning.movie_booking_system.dto.response.Booking.BookingResponse;
 import com.trainning.movie_booking_system.dto.response.Booking.BookingSeatResponse;
+import com.trainning.movie_booking_system.dto.response.Seat.SeatBookingResponse;
 import com.trainning.movie_booking_system.entity.Booking;
 
 import java.util.stream.Collectors;
@@ -26,7 +27,11 @@ public class BookingMapper {
     public static BookingSeatResponse toSeatResponse(com.trainning.movie_booking_system.entity.BookingSeat bookingSeat) {
         return BookingSeatResponse.builder()
                 .id(bookingSeat.getId())
-                .seatId(bookingSeat.getSeatId())
+                .seat(SeatBookingResponse.builder()
+                        .id(bookingSeat.getSeat().getId())
+                        .seatNumber(bookingSeat.getSeat().getSeatNumber())
+                        .rowLabel(bookingSeat.getSeat().getRowLabel())
+                        .build())
                 .price(bookingSeat.getPrice())
                 .build();
     }
