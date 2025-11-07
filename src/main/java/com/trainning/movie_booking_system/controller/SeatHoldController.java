@@ -1,0 +1,100 @@
+package com.trainning.movie_booking_system.controller;
+
+import com.trainning.movie_booking_system.dto.request.Seat.HoldSeatsRequest;
+import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
+import com.trainning.movie_booking_system.entity.Seat;
+import com.trainning.movie_booking_system.exception.BadRequestException;
+import com.trainning.movie_booking_system.exception.NotFoundException;
+import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
+import com.trainning.movie_booking_system.repository.SeatRepository;
+import com.trainning.movie_booking_system.repository.ShowtimeRepository;
+import com.trainning.movie_booking_system.security.SecurityUtils;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
+import java.util.List;
+
+/**
+ * Seat Hold Controller - Xử lý hold/release seats tạm thời
+ * User hold seats trước khi create booking
+ */
+@RestController
+@RequestMapping("/api/seats")
+@RequiredArgsConstructor
+@Validated
+@Slf4j
+public class SeatHoldController {
+    
+    private final SeatDomainService seatDomainService;
+    private final ShowtimeRepository showtimeRepository;
+    private final SeatRepository seatRepository;
+
+    /**
+     * Hold seats tạm thời (default 120s)
+     * User phải gọi endpoint này TRƯỚC KHI create booking
+     * 
+     * @param req Hold request with showtimeId, seatIds, ttlSec
+     * @return Success message
+     */
+    @PostMapping("/hold")
+    public ResponseEntity<?> hold(@RequestBody @Valid HoldSeatsRequest req) {
+        log.info("[SEAT-HOLD] Hold request: {}", req);
+        
+        // Validate showtime exists
+        showtimeRepository.findById(req.getShowtimeId())
+                .orElseThrow(() -> new NotFoundException("Showtime not found with ID: " + req.getShowtimeId()));
+        
+        // Validate seats exist and belong to the showtime's screen
+        List<Seat> seats = seatRepository.findAllById(req.getSeatIds());
+        if (seats.size() != req.getSeatIds().size()) {
+            List<Long> foundIds = seats.stream().map(Seat::getId).toList();
+            List<Long> missingIds = req.getSeatIds().stream()
+                    .filter(id -> !foundIds.contains(id))
+                    .toList();
+            throw new BadRequestException("Seats not found: " + missingIds);
+        }
+        
+        var userId = SecurityUtils.getCurrentUserDetails().getAccount().getId();
+        int ttlSec = req.getTtlSec() != null ? req.getTtlSec() : 120;
+        
+        seatDomainService.holdSeats(
+                req.getShowtimeId(), 
+                req.getSeatIds(), 
+                userId, 
+                Duration.ofSeconds(ttlSec)
+        );
+        
+        log.info("[SEAT-HOLD] User {} held {} seats for {}s", userId, req.getSeatIds().size(), ttlSec);
+        
+        return ResponseEntity.ok(BaseResponse.success(
+                null,
+                "Seats held successfully for %d seconds. Please create booking before timeout.".formatted(ttlSec)
+        ));
+    }
+
+    /**
+     * Release held seats manually
+     * User có thể gọi nếu muốn hủy hold trước khi hết TTL
+     * 
+     * @param req Release request with showtimeId, seatIds
+     * @return Success message
+     */
+    @PostMapping("/release")
+    public ResponseEntity<?> release(@RequestBody @Valid HoldSeatsRequest req) {
+        log.info("[SEAT-HOLD] Release request: {}", req);
+        
+        seatDomainService.releaseHolds(req.getShowtimeId(), req.getSeatIds());
+        
+        log.info("[SEAT-HOLD] Released {} seats for showtime {}", req.getSeatIds().size(), req.getShowtimeId());
+        
+        return ResponseEntity.ok(BaseResponse.success(
+                null,
+                "Seats released successfully"
+        ));
+    }
+}

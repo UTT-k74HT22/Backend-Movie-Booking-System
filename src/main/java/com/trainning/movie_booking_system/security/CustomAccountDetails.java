@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.security;
 
 import com.trainning.movie_booking_system.entity.Account;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,7 +12,15 @@ import java.util.List;
  * Custom UserDetails implementation cho Account entity
  * Chuyển đổi Account thành UserDetails để Spring Security có thể xử lý
  */
-public record CustomAccountDetails(Account account) implements UserDetails {
+@Getter
+@Setter
+public class CustomAccountDetails implements UserDetails {
+
+    private Account account;
+
+    public CustomAccountDetails(Account account) {
+        this.account = account;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -60,7 +69,6 @@ public record CustomAccountDetails(Account account) implements UserDetails {
     /**
      * Getter để truy cập Account entity nếu cần
      */
-    @Override
     public Account account() {
         return account;
     }
