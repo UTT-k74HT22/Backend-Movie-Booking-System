@@ -127,3 +127,10 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+vnpay:
+  tmnCode: ANBB2CT1
+  hashSecret: HV8WLKRENFNZP2ECO14M02RS4HM7E5KN
+  payUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  returnUrl: https://your-domain.com/payments/vnpay/return
+  ipnUrl: https://your-domain.com/payments/vnpay/ipn
