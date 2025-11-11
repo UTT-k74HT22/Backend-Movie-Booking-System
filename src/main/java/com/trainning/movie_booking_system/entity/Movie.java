@@ -29,7 +29,7 @@ public class Movie extends BaseEntity {
     private String title;
 
     @Column(columnDefinition = "TEXT")
-    private String description; // mô tả dài - không index
+    private String description; 
 
     @Column(nullable = false)
     private Integer duration;

@@ -42,7 +42,6 @@ public class Screen extends BaseEntity {
     @Builder.Default
     private Set<Seat> seats = new HashSet<>();
 
-    // Helper methods to maintain bidirectional relationship
     public void addSeat(Seat seat) {
         seats.add(seat);
         seat.setScreen(this);
