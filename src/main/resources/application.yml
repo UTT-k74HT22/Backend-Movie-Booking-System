@@ -12,7 +12,7 @@ spring:
   application:
     name: movie-booking
 
-    # DATABASE CONFIGURATION
+  # DATABASE CONFIGURATION
   datasource:
     url: jdbc:mysql://localhost:3306/movie_booking
     username: root
@@ -70,6 +70,12 @@ spring:
       host: localhost
       port: 6379
 
+# CORS CONFIGURATION
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
 
 # JWT CONFIGURATION
 jwt:

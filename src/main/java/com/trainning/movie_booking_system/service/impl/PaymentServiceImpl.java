@@ -158,7 +158,7 @@ public class PaymentServiceImpl implements PaymentService {
                 + "&amount=" + booking.getTotalPrice()
                 + "&currency=VND";
 
-        log.warn("[PAYMENT] ⚠️ TODO: Using MOCK payment URL. Implement real gateway!");
+        log.warn("[PAYMENT] [TODO] Using MOCK payment URL. Implement real gateway!");
         log.info("[PAYMENT] Mock URL: {}", mockPaymentUrl);
         
         return mockPaymentUrl;
@@ -179,7 +179,7 @@ public class PaymentServiceImpl implements PaymentService {
         // TODO: CRITICAL - VERIFY SIGNATURE
         // ==================================
         // if (!verifyPaymentSignature(request)) {
-        //     log.error("[PAYMENT] ⚠️ SECURITY: Invalid payment signature for booking {}", request.getBookingId());
+        //     log.error("[PAYMENT] [SECURITY] Invalid payment signature for booking {}", request.getBookingId());
         //     throw new SecurityException("Invalid payment signature");
         // }
 
@@ -213,7 +213,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .toList();
             seatDomainService.consumeHoldToBooked(booking.getShowtime().getId(), seatIds);
 
-            log.info("[PAYMENT] ✅ Payment SUCCESS for booking {}", booking.getId());
+            log.info("[PAYMENT] [SUCCESS] Payment successful for booking {}", booking.getId());
 
             // TODO: Send confirmation email
             // ==============================
@@ -240,7 +240,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .toList();
             seatDomainService.releaseHolds(booking.getShowtime().getId(), seatIds);
 
-            log.warn("[PAYMENT] ❌ Payment FAILED for booking {}", booking.getId());
+            log.warn("[PAYMENT] [FAILED] Payment failed or cancelled for booking {}", booking.getId());
 
             return PaymentResponse.builder()
                     .bookingId(booking.getId())
@@ -283,7 +283,7 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found: " + bookingId));
 
-        log.warn("[PAYMENT] ⚠️ TODO: Returning local status. Should query gateway API!");
+        log.warn("[PAYMENT] [TODO] Returning local status. Should query gateway API!");
         return booking.getStatus().name();
     }
 
