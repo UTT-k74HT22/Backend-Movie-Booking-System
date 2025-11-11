@@ -166,13 +166,19 @@ public class BookingServiceImpl implements BookingService {
         var bookingSeats = new ArrayList<BookingSeat>();
         BigDecimal total = BigDecimal.ZERO;
         for (SeatInfo info : seatInfos) {
+            Seat seat = seatIdToEntity.get(info.getSeatId());
+            
             BigDecimal multiplier = (info.getSeatType() == SeatType.VIP) ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
             BigDecimal price = showtime.getPrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
 
             bookingSeats.add(BookingSeat.builder()
                     .booking(booking)
-                    .seat(seatIdToEntity.get(info.getSeatId()))
+                    .seat(seat)
                     .price(price)
+                    // Copy denormalized seat info for performance (avoid N+1 query)
+                    .seatNumber(seat.getSeatNumber())
+                    .rowLabel(seat.getRowLabel())
+                    .seatType(seat.getSeatType())
                     .build());
             total = total.add(price);
         }
@@ -223,10 +229,10 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingResponse getById(Long id) {
         log.info("[BOOKING] Get booking by id: {}", id);
-        
-        Booking booking = bookingRepository.findById(id)
+
+        var booking = bookingRepository.findByIdWithSeats(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found with ID: " + id));
-        
+
         return toResponse(booking);
     }
 
