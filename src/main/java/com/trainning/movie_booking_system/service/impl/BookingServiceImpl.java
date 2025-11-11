@@ -157,6 +157,7 @@ public class BookingServiceImpl implements BookingService {
                 .account(account)
                 .showtime(showtime)
                 .status(BookingStatus.PENDING_PAYMENT)
+                .expiresAt(LocalDateTime.now().plusMinutes(15))  // Expire after 15 minutes
                 .build();
 
         var seatIdToEntity = seatRepository.findAllById(
