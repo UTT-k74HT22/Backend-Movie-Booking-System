@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -155,6 +156,7 @@ public class BookingServiceImpl implements BookingService {
                 .account(account)
                 .showtime(showtime)
                 .status(BookingStatus.PENDING_PAYMENT)
+                .expiresAt(LocalDateTime.now().plusMinutes(15))  // Expire after 15 minutes
                 .build();
 
         var seatIdToEntity = seatRepository.findAllById(

@@ -15,7 +15,8 @@ import java.util.List;
                 @Index(name = "idx_booking_account", columnList = "account_id"),
                 @Index(name = "idx_booking_showtime", columnList = "showtime_id"),
 //                @Index(name = "idx_booking_voucher", columnList = "voucher_id"),
-                @Index(name = "idx_booking_status", columnList = "status")
+                @Index(name = "idx_booking_status", columnList = "status"),
+                @Index(name = "idx_booking_expires", columnList = "status, expires_at")
         }
 )
 @Getter
@@ -46,6 +47,14 @@ public class Booking extends BaseEntity {
 
     @Column(name = "booking_date", nullable = false)
     private LocalDateTime bookingDate;
+
+    /**
+     * Expiration time for PENDING_PAYMENT bookings.
+     * After this time, cron job will automatically set status to EXPIRED.
+     * Set to booking_date + 15 minutes when booking is created.
+     */
+    @Column(name = "expires_at")  // Nullable để migrate data cũ
+    private LocalDateTime expiresAt;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
