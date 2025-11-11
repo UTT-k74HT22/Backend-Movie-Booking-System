@@ -29,8 +29,9 @@ public class BookingMapper {
                 .id(bookingSeat.getId())
                 .seat(SeatBookingResponse.builder()
                         .id(bookingSeat.getSeat().getId())
-                        .seatNumber(bookingSeat.getSeat().getSeatNumber())
-                        .rowLabel(bookingSeat.getSeat().getRowLabel())
+                        .seatNumber(bookingSeat.getSeatNumber())
+                        .rowLabel(bookingSeat.getRowLabel())
+                        .seatType(bookingSeat.getSeatType())
                         .build())
                 .price(bookingSeat.getPrice())
                 .build();

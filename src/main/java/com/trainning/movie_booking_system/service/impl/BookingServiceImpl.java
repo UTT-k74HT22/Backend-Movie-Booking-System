@@ -79,6 +79,7 @@ public class BookingServiceImpl implements BookingService {
         // ===== 2. Validate showtime exists =====
         Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
                 .orElseThrow(() -> new NotFoundException("Showtime not found with ID: " + request.getShowtimeId()));
+        validateShowTime(showtime);
 
         // ===== 3. Verify seats are held by current user (pre-check) =====
         seatClient.assertHeldByUser(request.getShowtimeId(), request.getSeatIds(), userId);
@@ -166,13 +167,19 @@ public class BookingServiceImpl implements BookingService {
         var bookingSeats = new ArrayList<BookingSeat>();
         BigDecimal total = BigDecimal.ZERO;
         for (SeatInfo info : seatInfos) {
+            Seat seat = seatIdToEntity.get(info.getSeatId());
+            
             BigDecimal multiplier = (info.getSeatType() == SeatType.VIP) ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
             BigDecimal price = showtime.getPrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
 
             bookingSeats.add(BookingSeat.builder()
                     .booking(booking)
-                    .seat(seatIdToEntity.get(info.getSeatId()))
+                    .seat(seat)
                     .price(price)
+                    // Copy denormalized seat info for performance (avoid N+1 query)
+                    .seatNumber(seat.getSeatNumber())
+                    .rowLabel(seat.getRowLabel())
+                    .seatType(seat.getSeatType())
                     .build());
             total = total.add(price);
         }
@@ -223,10 +230,10 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingResponse getById(Long id) {
         log.info("[BOOKING] Get booking by id: {}", id);
-        
-        Booking booking = bookingRepository.findById(id)
+
+        var booking = bookingRepository.findByIdWithSeats(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found with ID: " + id));
-        
+
         return toResponse(booking);
     }
 
@@ -245,5 +252,46 @@ public class BookingServiceImpl implements BookingService {
         // TODO: Add filters (by user, by showtime, by status, by date range)
         
         throw new UnsupportedOperationException("Pagination not yet implemented");
+    }
+
+    // ========== PRIVATE METHODS ========== //
+    
+    /**
+     * Validate showtime chưa bắt đầu và còn thời gian đặt vé
+     * 
+     * @param showtime Showtime cần validate
+     * @throws BadRequestException nếu showtime đã qua hoặc vượt cutoff time
+     */
+    private void validateShowTime(Showtime showtime) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Combine show_date + start_time thành LocalDateTime
+        LocalDateTime showtimeStart = LocalDateTime.of(
+            showtime.getShowDate(),
+            showtime.getStartTime()
+        );
+        
+        // Rule 1: Không được book suất chiếu đã qua
+        if (showtimeStart.isBefore(now)) {
+            log.warn("Attempt to book past showtime: showtimeId={}, showtimeStart={}, now={}", 
+                    showtime.getId(), showtimeStart, now);
+            throw new BadRequestException(
+                String.format("Cannot book for past showtime. Showtime was at %s", 
+                    showtimeStart)
+            );
+        }
+        
+        // Rule 2: Đóng booking 15 phút trước giờ chiếu
+        LocalDateTime cutoffTime = showtimeStart.minusMinutes(15);
+        if (now.isAfter(cutoffTime)) {
+            log.warn("Attempt to book within cutoff time: showtimeId={}, cutoffTime={}, now={}", 
+                    showtime.getId(), cutoffTime, now);
+            throw new BadRequestException(
+                String.format("Booking closes 15 minutes before showtime. Cutoff time was %s", 
+                    cutoffTime)
+            );
+        }
+        
+        log.debug("Showtime validation passed for showtime ID: {}", showtime.getId());
     }
 }

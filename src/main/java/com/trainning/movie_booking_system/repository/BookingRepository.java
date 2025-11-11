@@ -8,19 +8,28 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     /**
      * Find all bookings that have expired based on status and expiry time.
-     * Uses expiresAt field for accurate expiration checking.
-     * 
-     * @param status the booking status to filter by (typically PENDING_PAYMENT)
-     * @param now the current time to compare against expiresAt
+     * @param status the booking status to filter by
+     * @param expiryTime the expiry time to compare booking dates against
      * @return a list of expired bookings
      */
-    @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.expiresAt < :now")
+    @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.bookingDate < :expiryTime")
     List<Booking> findAllExpiredBookings(@Param("status") BookingStatus status,
-                                         @Param("now") LocalDateTime now);
-}
+                                         @Param("expiryTime") LocalDateTime expiryTime);
 
+    /**
+     * Fetch booking with its bookingSeats and seat entities to avoid N+1.
+     */
+    @Query("""
+        select b from Booking b
+        left join fetch b.bookingSeats bs
+        left join fetch bs.seat s
+        where b.id = :id
+    """)
+    Optional<Booking> findByIdWithSeats(@Param("id") Long id);
+}
