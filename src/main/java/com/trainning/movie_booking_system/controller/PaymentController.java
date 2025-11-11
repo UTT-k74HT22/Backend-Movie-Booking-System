@@ -61,6 +61,25 @@ public class PaymentController {
     }
 
     /**
+     * VNPay return callback endpoint
+     * VNPay sẽ redirect user về đây sau khi thanh toán (Success hoặc Fail)
+     * URL: /api/payments/vnpay/return?vnp_Amount=...&vnp_TxnRef=...&vnp_SecureHash=...
+     */
+    @GetMapping("/vnpay/return")
+    public ResponseEntity<?> handleVNPayReturn(jakarta.servlet.http.HttpServletRequest request) {
+        log.info("[PAYMENT-CONTROLLER] VNPay return callback received");
+        
+        var response = paymentService.handleVNPayReturn(request);
+        
+        // TODO: Redirect về frontend success/failure page thay vì return JSON
+        // For now, return JSON response
+        return ResponseEntity.ok(BaseResponse.success(
+                response,
+                "Payment " + response.getStatus().toLowerCase()
+        ));
+    }
+
+    /**
      * Payment Gateway callback endpoint
      * Gateway sẽ gọi endpoint này sau khi user thanh toán
      * 

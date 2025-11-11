@@ -3,10 +3,12 @@ package com.trainning.movie_booking_system.controller;
 import com.trainning.movie_booking_system.dto.request.Booking.BookingRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.BookingService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Validated
 @Slf4j
+@SecurityRequirement(name = "bearerAuth")
 public class BookingController {
 
     private final BookingService bookingService;
@@ -22,11 +25,14 @@ public class BookingController {
     /**
      * Create a new booking
      * Sau khi tạo thành công, user cần redirect sang payment gateway
+     * 
+     * REQUIRES AUTHENTICATION - User must be logged in
      *
      * @param request the booking request data
      * @return response entity with created booking
      */
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> create(@RequestBody @Valid BookingRequest request) {
         log.info("[BOOKING] Create request: {}", request);
         var booking = bookingService.create(request);

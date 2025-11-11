@@ -29,12 +29,12 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
     /**
      * Find all active public vouchers
      */
-    @Query("SELECT v FROM Voucher v WHERE v.status = :status AND v.isPublic = true " +
-           "AND v.validFrom <= :now AND v.validUntil >= :now " +
-           "AND v.currentUsageCount < v.totalUsageLimit")
-    Page<Voucher> findActivePublicVouchers(@Param("status") VoucherStatus status,
-                                           @Param("now") LocalDateTime now,
-                                           Pageable pageable);
+//    @Query("SELECT v FROM Voucher v WHERE v.status = :status AND v.isPublic = true " +
+//           "AND v.validFrom <= :now AND v.validUntil >= :now " +
+//           "AND v.currentUsageCount < v.totalUsageLimit")
+//    Page<Voucher> findActivePublicVouchers(@Param("status") VoucherStatus status,
+//                                           @Param("now") LocalDateTime now,
+//                                           Pageable pageable);
 
     /**
      * Find vouchers by status
@@ -44,19 +44,19 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
     /**
      * Find expired vouchers that need status update
      */
-    @Query("SELECT v FROM Voucher v WHERE v.status = :activeStatus AND v.validUntil < :now")
-    List<Voucher> findExpiredVouchers(@Param("activeStatus") VoucherStatus activeStatus,
-                                     @Param("now") LocalDateTime now);
+//    @Query("SELECT v FROM Voucher v WHERE v.status = :activeStatus AND v.validUntil < :now")
+//    List<Voucher> findExpiredVouchers(@Param("activeStatus") VoucherStatus activeStatus,
+//                                     @Param("now") LocalDateTime now);
 
     /**
      * Find vouchers with usage limit reached
      */
-    @Query("SELECT v FROM Voucher v WHERE v.status = :status AND v.currentUsageCount >= v.totalUsageLimit")
-    List<Voucher> findVouchersWithUsageLimitReached(@Param("status") VoucherStatus status);
+//    @Query("SELECT v FROM Voucher v WHERE v.status = :status AND v.currentUsageCount >= v.totalUsageLimit")
+//    List<Voucher> findVouchersWithUsageLimitReached(@Param("status") VoucherStatus status);
 
     /**
      * Find all vouchers created by a specific user (admin)
      */
-    @Query("SELECT v FROM Voucher v WHERE v.createdBy = :userId ORDER BY v.createdAt DESC")
-    Page<Voucher> findByCreatedBy(@Param("userId") Long userId, Pageable pageable);
+//    @Query("SELECT v FROM Voucher v WHERE v.createdBy = :userId ORDER BY v.createdAt DESC")
+//    Page<Voucher> findByCreatedBy(@Param("userId") Long userId, Pageable pageable);
 }

@@ -36,8 +36,10 @@ import java.time.LocalTime;
 /**
  * Implementation of Voucher Service
  * Handles voucher validation, application, and management
+ * 
+ * ⚠️ TEMPORARILY DISABLED - Not ready for deployment
  */
-@Service
+//@Service
 @RequiredArgsConstructor
 @Slf4j
 @Transactional

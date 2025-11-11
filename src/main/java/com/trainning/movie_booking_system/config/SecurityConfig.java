@@ -89,13 +89,6 @@ public class SecurityConfig {
                         // Endpoints hoàn toàn public
                         .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
 
-                        // Chỉ GET là public, còn lại cần ADMIN
-                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.POST, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-
                         // Tất cả request khác cần authenticated
                         .anyRequest().authenticated()
                 )

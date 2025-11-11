@@ -26,15 +26,17 @@ import org.springframework.web.bind.annotation.*;
 /**
  * REST Controller for Voucher operations
  * Handles voucher validation, usage history, and admin management
+ * 
+ * ⚠️ TEMPORARILY DISABLED - VoucherService implementation not ready
  */
-@RestController
-@RequestMapping("/api/v1/vouchers")
+//@RestController
+//@RequestMapping("/api/v1/vouchers")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Voucher", description = "Voucher management APIs")
 public class VoucherController {
 
-    private final IVoucherService voucherService;
+    //private final IVoucherService voucherService;
 
     /**
      * ============================================

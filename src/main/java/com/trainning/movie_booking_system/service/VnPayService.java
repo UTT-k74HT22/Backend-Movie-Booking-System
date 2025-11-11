@@ -1,5 +1,8 @@
 package com.trainning.movie_booking_system.service;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
+
 public interface VnPayService {
 
     /**
@@ -13,5 +16,19 @@ public interface VnPayService {
      */
     String createPaymentUrl(String txnRef, long amountVnd, String orderInfo, String clientIp);
 
+    /**
+     * Verify the integrity of VnPay callback parameters
+     *
+     * @param params Map of callback parameters from VnPay
+     * @return true if the signature is valid, false otherwise
+     */
+    boolean verify(Map<String, String> params);
 
+    /**
+     * Process VNPay return callback
+     *
+     * @param request HttpServletRequest containing VNPay callback params
+     * @return 1 = success, 0 = failed, -1 = invalid signature
+     */
+    int orderReturn(HttpServletRequest request);
 }
