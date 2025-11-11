@@ -45,7 +45,7 @@ public class GlobalExceptionHandle {
             String message = error.getDefaultMessage();
             errors.put(field, message);
         });
-        log.warn("️ Validation failed: {}", errors);
+        log.warn("[VALIDATION] Validation failed: {}", errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(BaseResponse.failure("Validation failed", errors));
     }
@@ -57,7 +57,7 @@ public class GlobalExceptionHandle {
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .toList();
 
-        log.warn(" Validation failed: {}", errors);
+        log.warn("[VALIDATION] Constraint validation failed: {}", errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(BaseResponse.failure("Validation failed", errors));
@@ -76,7 +76,7 @@ public class GlobalExceptionHandle {
                     : result.getResolvableErrors().get(0).getDefaultMessage();
             errors.put(paramName, message);
         });
-        log.warn(" Method param validation failed: {}", errors);
+        log.warn("[VALIDATION] Method param validation failed: {}", errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(BaseResponse.failure("Validation failed", errors));
     }

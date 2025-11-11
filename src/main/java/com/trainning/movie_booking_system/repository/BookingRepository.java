@@ -2,12 +2,13 @@ package com.trainning.movie_booking_system.repository;
 
 import com.trainning.movie_booking_system.entity.Booking;
 import com.trainning.movie_booking_system.untils.enums.BookingStatus;
-import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -20,5 +21,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.bookingDate < :expiryTime")
     List<Booking> findAllExpiredBookings(@Param("status") BookingStatus status,
                                          @Param("expiryTime") LocalDateTime expiryTime);
-}
 
+    /**
+     * Fetch booking with its bookingSeats and seat entities to avoid N+1.
+     */
+    @Query("""
+        select b from Booking b
+        left join fetch b.bookingSeats bs
+        left join fetch bs.seat s
+        where b.id = :id
+    """)
+    Optional<Booking> findByIdWithSeats(@Param("id") Long id);
+}

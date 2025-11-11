@@ -4,13 +4,8 @@ import com.trainning.movie_booking_system.untils.enums.SeatStatus;
 import com.trainning.movie_booking_system.untils.enums.SeatType;
 import jakarta.persistence.*;
 import lombok.*;
-
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.Where;
-
-import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity

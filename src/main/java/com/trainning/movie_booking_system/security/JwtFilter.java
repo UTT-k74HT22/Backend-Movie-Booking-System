@@ -46,7 +46,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     username = jwtProvider.extractUsername(token);
                     log.debug("Extracted username from token: {}", username);
                 } catch (Exception e) {
-                    log.warn("Failed to extract username from token: {}", e.getMessage());
+                    log.warn("[JWT] Failed to extract username from token: {}", e.getMessage(), e);
                     // Tiếp tục filter chain mà không set authentication
                     filterChain.doFilter(request, response);
                     return;
@@ -82,7 +82,7 @@ public class JwtFilter extends OncePerRequestFilter {
             }
             
         } catch (Exception e) {
-            log.error("Cannot set user authentication: {}", e.getMessage());
+            log.error("[JWT] Cannot set user authentication: {}", e.getMessage(), e);
         }
 
         // Tiếp tục filter chain

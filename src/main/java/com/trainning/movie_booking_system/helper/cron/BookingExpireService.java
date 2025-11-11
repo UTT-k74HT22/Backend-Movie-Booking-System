@@ -27,17 +27,17 @@ public class BookingExpireService {
 
     /**
      * Cron job chạy mỗi 5 phút để kiểm tra các booking đã hết hạn
-     * Booking PENDING_PAYMENT quá 15 phút sẽ bị EXPIRED
+     * Booking PENDING_PAYMENT có expiresAt < now sẽ bị EXPIRED
      */
     @Transactional
     @Scheduled(cron = "0 */5 * * * *")  // Chạy mỗi 5 phút
     public void expireBookings() {
         log.info("[BOOKING-EXPIRE] Starting booking expiration check...");
 
-        // Lấy danh sách booking PENDING_PAYMENT quá 15 phút
+        // Lấy danh sách booking PENDING_PAYMENT đã hết hạn (expiresAt < now)
         List<Booking> expiredBookings = bookingRepository.findAllExpiredBookings(
                 BookingStatus.PENDING_PAYMENT,
-                LocalDateTime.now().minusMinutes(15)
+                LocalDateTime.now()
         );
 
         if (expiredBookings.isEmpty()) {
