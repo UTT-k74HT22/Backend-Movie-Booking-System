@@ -26,11 +26,9 @@ import org.springframework.web.bind.annotation.*;
 /**
  * REST Controller for Voucher operations
  * Handles voucher validation, usage history, and admin management
- * 
- * ⚠️ TEMPORARILY DISABLED - VoucherService implementation not ready
  */
-//@RestController
-//@RequestMapping("/api/v1/vouchers")
+@RestController
+@RequestMapping("/api/v1/vouchers")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Voucher", description = "Voucher management APIs")
@@ -47,6 +45,8 @@ public class VoucherController {
     /**
      * Validate a voucher for a booking
      * POST /api/v1/vouchers/validate
+     * 
+     * REQUIRES AUTHENTICATION - User must be logged in
      * 
      * TODO: Implement validation endpoint
      * - Extract user ID from authentication principal
@@ -80,14 +80,16 @@ public class VoucherController {
 
     /**
      * Get all public vouchers (available vouchers)
-     * GET /api/v1/vouchers/public
+     * GET /api/v1/vouchers
+     * 
+     * PUBLIC - No authentication required
      * 
      * TODO: Implement public vouchers list endpoint
      * - Parse pagination parameters
      * - Call voucherService.getPublicVouchers()
      * - Return page of public vouchers
      */
-    @GetMapping("/public")
+    @GetMapping
     @Operation(
         summary = "Get public vouchers",
         description = "Get all active public vouchers that can be used"
@@ -117,7 +119,9 @@ public class VoucherController {
 
     /**
      * Get user's voucher usage history
-     * GET /api/v1/vouchers/my-usage
+     * GET /api/v1/voucher-usages/me
+     * 
+     * REQUIRES AUTHENTICATION - User must be logged in
      * 
      * TODO: Implement user voucher usage history endpoint
      * - Extract user ID from authentication principal
@@ -125,7 +129,7 @@ public class VoucherController {
      * - Call voucherService.getUserVoucherUsageHistory()
      * - Return page of usage history
      */
-    @GetMapping("/my-usage")
+    @GetMapping("/usages/me")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
@@ -162,14 +166,14 @@ public class VoucherController {
 
     /**
      * Create a new voucher (ADMIN only)
-     * POST /api/v1/vouchers
+     * POST /api/v1/vouchers/admin
      * 
      * TODO: Implement create voucher endpoint
      * - Validate request body
      * - Call voucherService.createVoucher()
      * - Return created voucher
      */
-    @PostMapping
+    @PostMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
@@ -192,7 +196,7 @@ public class VoucherController {
 
     /**
      * Update an existing voucher (ADMIN only)
-     * PUT /api/v1/vouchers/{id}
+     * PUT /api/v1/vouchers/admin/{id}
      * 
      * TODO: Implement update voucher endpoint
      * - Extract voucher ID from path
@@ -200,7 +204,7 @@ public class VoucherController {
      * - Call voucherService.updateVoucher()
      * - Return updated voucher
      */
-    @PutMapping("/{id}")
+    @PutMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
@@ -224,14 +228,14 @@ public class VoucherController {
 
     /**
      * Delete a voucher (ADMIN only)
-     * DELETE /api/v1/vouchers/{id}
+     * DELETE /api/v1/vouchers/admin/{id}
      * 
      * TODO: Implement delete voucher endpoint
      * - Extract voucher ID from path
      * - Call voucherService.deleteVoucher()
      * - Return 204 No Content
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
@@ -252,14 +256,14 @@ public class VoucherController {
 
     /**
      * Get voucher by ID (ADMIN only)
-     * GET /api/v1/vouchers/{id}
+     * GET /api/v1/vouchers/admin/{id}
      * 
      * TODO: Implement get voucher by ID endpoint
      * - Extract voucher ID from path
      * - Call voucherService.getVoucherById()
      * - Return voucher details
      */
-    @GetMapping("/{id}")
+    @GetMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
@@ -280,14 +284,14 @@ public class VoucherController {
 
     /**
      * Get all vouchers (ADMIN only)
-     * GET /api/v1/vouchers
+     * GET /api/v1/vouchers/admin
      * 
      * TODO: Implement get all vouchers endpoint
      * - Parse pagination parameters
      * - Call voucherService.getAllVouchers()
      * - Return page of all vouchers
      */
-    @GetMapping
+    @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(

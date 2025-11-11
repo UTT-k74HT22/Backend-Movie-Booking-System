@@ -13,7 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
@@ -32,12 +32,11 @@ public class BookingController {
      * @return response entity with created booking
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> create(@RequestBody @Valid BookingRequest request) {
         log.info("[BOOKING] Create request: {}", request);
         var booking = bookingService.create(request);
 
-        // TODO: Frontend cần redirect user sang /api/payments/create/{bookingId}
+        // TODO: Frontend cần redirect user sang /api/v1/bookings/{bookingId}/payment
         log.info("[BOOKING] Booking {} created. Status: PENDING_PAYMENT. User needs to complete payment within 15 minutes.",
                 booking.getId());
 

@@ -14,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/seats")
+@RequestMapping("/api/v1/seats")
 @RequiredArgsConstructor
 @Validated
 @Slf4j

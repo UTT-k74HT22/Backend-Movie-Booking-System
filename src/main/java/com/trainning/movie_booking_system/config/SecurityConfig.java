@@ -36,30 +36,35 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtFilter jwtFilter;
 
-    // Endpoints hoàn toàn public (không cần auth)
-    public static final String[] PUBLIC_AUTH_ENDPOINTS = {
+    /**
+     * Public endpoints - không cần authentication
+     * Bao gồm:
+     * - Authentication endpoints (register, login, etc.)
+     * - Public read-only resources (movies, theaters, showtimes - GET only)
+     * - Payment webhooks (verified by signature)
+     * - API documentation
+     */
+    public static final String[] PUBLIC_ENDPOINTS = {
             "/",
-            "/api/auth/register",
-            "/api/auth/login",
-            "/api/auth/logout",
-            "/api/auth/refresh-token",
-            "/api/auth/activate",
-            "/api/auth/verify-otp",
-            "/api/auth/forgot-password",
-            "/api/auth/reset-password",
-            "/api/otp/**",
+            // ===== AUTHENTICATION =====
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/activate",
+            "/api/v1/auth/refresh-token",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/otp/**",
+            
+            // ===== PAYMENT WEBHOOKS (verified by signature) =====
+            "/api/v1/payments/vnpay/callback",
+            "/api/v1/payments/webhook",
+            
+            // ===== API DOCUMENTATION =====
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**"
-    };
-
-    // Chỉ cho phép GET public, các method khác cần ADMIN
-    public static final String[] PUBLIC_GET_ENDPOINTS = {
-            "/api/movies/**",
-            "/api/theaters/**",
-            "/api/showtimes/**",
-            "/api/seats/**"
     };
 
     @Bean
@@ -86,10 +91,44 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authz -> authz
-                        // Endpoints hoàn toàn public
-                        .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
+                        // ===== PUBLIC ENDPOINTS =====
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        
+                        // ===== PUBLIC READ-ONLY (GET only) =====
+                        // Movies - public can view, search
+                        .requestMatchers(HttpMethod.GET, "/api/v1/movies/**").permitAll()
+                        
+                        // Theaters - public can view
+                        .requestMatchers(HttpMethod.GET, "/api/v1/theaters/**").permitAll()
+                        
+                        // Showtimes - public can view schedule
+                        .requestMatchers(HttpMethod.GET, "/api/v1/showtimes/**").permitAll()
+                        
+                        // Screens & Seats - public can view layout
+                        .requestMatchers(HttpMethod.GET, "/api/v1/screens/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/seats/**").permitAll()
+                        
+                        // Vouchers - public can view available vouchers
+                        .requestMatchers(HttpMethod.GET, "/api/v1/vouchers").permitAll()
+                        
+                        // ===== ADMIN ENDPOINTS =====
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        
+                        // ===== AUTHENTICATED ENDPOINTS =====
+                        // Bookings - require authentication
+                        .requestMatchers("/api/v1/bookings/**").authenticated()
+                        
+                        // Payments - require authentication (except webhooks already in PUBLIC_ENDPOINTS)
+                        .requestMatchers("/api/v1/payments/**").authenticated()
+                        
+                        // Seat holds - require authentication
+                        .requestMatchers("/api/v1/seat-holds/**").authenticated()
+                        
+                        // Voucher operations - require authentication
+                        .requestMatchers("/api/v1/vouchers/validate").authenticated()
+                        .requestMatchers("/api/v1/voucher-usages/**").authenticated()
 
-                        // Tất cả request khác cần authenticated
+                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

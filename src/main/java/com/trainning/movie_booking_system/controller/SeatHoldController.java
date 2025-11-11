@@ -22,9 +22,11 @@ import java.util.List;
 /**
  * Seat Hold Controller - Xử lý hold/release seats tạm thời
  * User hold seats trước khi create booking
+ * 
+ * REQUIRES AUTHENTICATION - User must be logged in
  */
 @RestController
-@RequestMapping("/api/seats")
+@RequestMapping("/api/v1/seat-holds")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
@@ -38,10 +40,13 @@ public class SeatHoldController {
      * Hold seats tạm thời (default 120s)
      * User phải gọi endpoint này TRƯỚC KHI create booking
      * 
+     * REQUIRES AUTHENTICATION - User must be logged in
+     * POST /api/v1/seat-holds
+     * 
      * @param req Hold request with showtimeId, seatIds, ttlSec
      * @return Success message
      */
-    @PostMapping("/hold")
+    @PostMapping
     public ResponseEntity<?> hold(@RequestBody @Valid HoldSeatsRequest req) {
         log.info("[SEAT-HOLD] Hold request: {}", req);
         
@@ -81,10 +86,13 @@ public class SeatHoldController {
      * Release held seats manually
      * User có thể gọi nếu muốn hủy hold trước khi hết TTL
      * 
+     * REQUIRES AUTHENTICATION - User must be logged in
+     * DELETE /api/v1/seat-holds
+     * 
      * @param req Release request with showtimeId, seatIds
      * @return Success message
      */
-    @PostMapping("/release")
+    @DeleteMapping
     public ResponseEntity<?> release(@RequestBody @Valid HoldSeatsRequest req) {
         log.info("[SEAT-HOLD] Release request: {}", req);
         
