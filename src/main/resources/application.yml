@@ -109,20 +109,19 @@ openapi:
 logging:
   level:
     root: INFO
-    com.moviebooking: DEBUG
+    com.trainning.movie_booking_system: DEBUG
     org.springframework.security: INFO
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %highlight(%-5level){ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=magenta} %cyan(%logger{36}) - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
   logback:
     rollingpolicy:
       clean-history-on-start: true
-
 
 # MANAGEMENT & ACTUATOR (Optional)
 management:

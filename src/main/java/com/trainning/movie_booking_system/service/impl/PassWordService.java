@@ -9,7 +9,6 @@ import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.repository.AccountRepository;
 import com.trainning.movie_booking_system.service.OtpService;
 import com.trainning.movie_booking_system.service.RedisService;
-import io.micrometer.common.util.StringUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
