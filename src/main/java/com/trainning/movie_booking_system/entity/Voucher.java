@@ -7,9 +7,14 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "vouchers",
+@Table(
+        name = "vouchers",
         indexes = {
                 @Index(name = "idx_code", columnList = "code"),
                 @Index(name = "idx_status_voucher", columnList = "status"),
@@ -85,4 +90,9 @@ public class Voucher extends BaseEntity {
 
     @Column(name = "is_public")
     private Boolean isPublic = Boolean.TRUE;
+
+    // Người tạo voucher
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 }

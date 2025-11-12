@@ -15,26 +15,49 @@ import java.math.BigDecimal;
 @Builder
 public class VoucherValidationResult {
 
+    /**
+     * Voucher hợp lệ hay không
+     */
     private Boolean isValid;
-    
+
+    /**
+     * Thông báo chi tiết về kết quả kiểm tra voucher (vd: "Voucher hết hạn", "Voucher hợp lệ")
+     */
     private String message;
-    
+
+    /**
+     * Mã voucher
+     */
     private String voucherCode;
-    
+
+    /**
+     * Tên voucher
+     */
     private String voucherName;
-    
-    // Original booking amount before discount
+
+    /**
+     * Giá trị ban đầu của booking trước khi áp voucher
+     */
     private BigDecimal originalAmount;
-    
-    // Discount amount calculated based on voucher rules
+
+    /**
+     * Số tiền giảm giá được áp dụng từ voucher
+     */
     private BigDecimal discountAmount;
-    
-    // Final amount after applying discount
+
+    /**
+     * Giá cuối cùng sau khi áp voucher
+     */
     private BigDecimal finalAmount;
-    
-    // Remaining usage for this user
+
+    /**
+     * Số lượt sử dụng còn lại của user đối với voucher này
+     */
     private Integer remainingUsage;
-    
-    // Voucher expiry info
+
+    /**
+     * Thời hạn hiệu lực của voucher (string dạng yyyy-MM-dd hoặc ISO)
+     */
     private String validUntil;
+
 }

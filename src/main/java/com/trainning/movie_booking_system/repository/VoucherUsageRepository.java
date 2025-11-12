@@ -15,49 +15,31 @@ import java.util.Optional;
 @Repository
 public interface VoucherUsageRepository extends JpaRepository<VoucherUsage, Long> {
 
-    /**
-     * Count how many times a user has used a specific voucher
-     */
+    // ===================== COUNT & CHECK =====================
     @Query("SELECT COUNT(vu) FROM VoucherUsage vu WHERE vu.voucher.id = :voucherId AND vu.user.id = :userId")
     long countByVoucherIdAndUserId(@Param("voucherId") Long voucherId, @Param("userId") Long userId);
 
-    /**
-     * Find all voucher usages by user ID
-     */
+    boolean existsByBookingId(Long bookingId);
+
+    // ===================== FIND =====================
     @Query("SELECT vu FROM VoucherUsage vu WHERE vu.user.id = :userId ORDER BY vu.usedAt DESC")
     Page<VoucherUsage> findByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    /**
-     * Find all usages for a specific voucher
-     */
     @Query("SELECT vu FROM VoucherUsage vu WHERE vu.voucher.id = :voucherId ORDER BY vu.usedAt DESC")
     Page<VoucherUsage> findByVoucherId(@Param("voucherId") Long voucherId, Pageable pageable);
 
-    /**
-     * Find voucher usage by booking ID
-     */
+    List<VoucherUsage> findAllByBookingId(Long bookingId);
+
     Optional<VoucherUsage> findByBookingId(Long bookingId);
 
-    /**
-     * Find usages within a date range (for analytics)
-     */
+    // ===================== DELETE =====================
+    void deleteByBookingId(Long bookingId);
+
+    // ===================== ANALYTICS =====================
     @Query("SELECT vu FROM VoucherUsage vu WHERE vu.usedAt BETWEEN :startDate AND :endDate")
     List<VoucherUsage> findUsagesBetweenDates(@Param("startDate") LocalDateTime startDate,
                                               @Param("endDate") LocalDateTime endDate);
 
-    /**
-     * Get total discount amount for a voucher (analytics)
-     */
     @Query("SELECT COALESCE(SUM(vu.discountAmount), 0) FROM VoucherUsage vu WHERE vu.voucher.id = :voucherId")
     Long getTotalDiscountByVoucher(@Param("voucherId") Long voucherId);
-
-    /**
-     * Delete voucher usage by booking ID (for refund/cancellation)
-     */
-    void deleteByBookingId(Long bookingId);
-
-    /**
-     * Check if booking already used a voucher
-     */
-    boolean existsByBookingId(Long bookingId);
 }

@@ -1,14 +1,12 @@
 package com.trainning.movie_booking_system.dto.request.Voucher;
 
+import com.trainning.movie_booking_system.dto.SeatInfo;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
-/**
- * Request DTO for validating a voucher
- * Used when user wants to apply a voucher to their booking
- */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -16,47 +16,35 @@ import java.util.Optional;
 @Repository
 public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
-    /**
-     * Find voucher by code (case-insensitive)
-     */
+    // Tìm voucher theo code, không phân biệt hoa thường
     Optional<Voucher> findByCodeIgnoreCase(String code);
 
-    /**
-     * Check if voucher code exists
-     */
+    // Kiểm tra voucher đã tồn tại
     boolean existsByCodeIgnoreCase(String code);
 
-    /**
-     * Find all active public vouchers
-     */
-//    @Query("SELECT v FROM Voucher v WHERE v.status = :status AND v.isPublic = true " +
-//           "AND v.validFrom <= :now AND v.validUntil >= :now " +
-//           "AND v.currentUsageCount < v.totalUsageLimit")
-//    Page<Voucher> findActivePublicVouchers(@Param("status") VoucherStatus status,
-//                                           @Param("now") LocalDateTime now,
-//                                           Pageable pageable);
+    // Lấy các voucher public còn hiệu lực
+    @Query("SELECT v FROM Voucher v " +
+            "WHERE v.status = :status AND v.isPublic = true " +
+            "AND v.validFrom <= :now AND v.validUntil >= :now " +
+            "AND v.currentUsageCount < v.totalUsageLimit")
+    Page<Voucher> findActivePublicVouchers(@Param("status") VoucherStatus status,
+                                           @Param("now") LocalDateTime now,
+                                           Pageable pageable);
 
-    /**
-     * Find vouchers by status
-     */
-    List<Voucher> findByStatus(VoucherStatus status);
+    // Lấy voucher hết hạn (dùng task scheduled)
+    @Query("SELECT v FROM Voucher v " +
+            "WHERE v.status = :activeStatus AND v.validUntil < :now")
+    List<Voucher> findExpiredVouchers(@Param("activeStatus") VoucherStatus activeStatus,
+                                      @Param("now") LocalDateTime now);
 
-    /**
-     * Find expired vouchers that need status update
-     */
-//    @Query("SELECT v FROM Voucher v WHERE v.status = :activeStatus AND v.validUntil < :now")
-//    List<Voucher> findExpiredVouchers(@Param("activeStatus") VoucherStatus activeStatus,
-//                                     @Param("now") LocalDateTime now);
+    // Voucher đã đạt giới hạn sử dụng
+    @Query("SELECT v FROM Voucher v " +
+            "WHERE v.status = :status AND v.currentUsageCount >= v.totalUsageLimit")
+    List<Voucher> findVouchersWithUsageLimitReached(@Param("status") VoucherStatus status);
 
-    /**
-     * Find vouchers with usage limit reached
-     */
-//    @Query("SELECT v FROM Voucher v WHERE v.status = :status AND v.currentUsageCount >= v.totalUsageLimit")
-//    List<Voucher> findVouchersWithUsageLimitReached(@Param("status") VoucherStatus status);
-
-    /**
-     * Find all vouchers created by a specific user (admin)
-     */
-//    @Query("SELECT v FROM Voucher v WHERE v.createdBy = :userId ORDER BY v.createdAt DESC")
-//    Page<Voucher> findByCreatedBy(@Param("userId") Long userId, Pageable pageable);
+    // Voucher tạo bởi user (admin)
+    @Query("SELECT v FROM Voucher v " +
+            "WHERE v.createdBy = :userId " +
+            "ORDER BY v.createdAt DESC")
+    Page<Voucher> findByCreatedBy(@Param("userId") Long userId, Pageable pageable);
 }

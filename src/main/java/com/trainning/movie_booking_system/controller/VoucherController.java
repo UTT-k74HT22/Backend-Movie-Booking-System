@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * REST Controller for Voucher operations
- * Handles voucher validation, usage history, and admin management
+ * Handles CRUD, validation, and usage history
  */
 @RestController
 @RequestMapping("/api/v1/vouchers")
@@ -34,290 +34,118 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Voucher", description = "Voucher management APIs")
 public class VoucherController {
 
-    //private final IVoucherService voucherService;
+    private final IVoucherService voucherService;
 
-    /**
-     * ============================================
-     * USER ENDPOINTS
-     * ============================================
-     */
+    // =========================
+    // USER ENDPOINTS
+    // =========================
 
-    /**
-     * Validate a voucher for a booking
-     * POST /api/v1/vouchers/validate
-     * 
-     * REQUIRES AUTHENTICATION - User must be logged in
-     * 
-     * TODO: Implement validation endpoint
-     * - Extract user ID from authentication principal
-     * - Call voucherService.validateVoucher()
-     * - Return validation result with discount calculation
-     */
     @PostMapping("/validate")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Validate voucher",
-        description = "Validate if a voucher can be applied to a booking and calculate discount"
-    )
+    @Operation(summary = "Validate voucher", description = "Validate if a voucher can be applied and calculate discount")
     public ResponseEntity<VoucherValidationResult> validateVoucher(
             @Valid @RequestBody ValidateVoucherRequest request,
             @AuthenticationPrincipal CustomAccountDetails accountDetails
     ) {
-        log.info("REST request to validate voucher: {}", request.getVoucherCode());
-
-        // TODO: Get user ID from CustomAccountDetails
-        // Long userId = accountDetails.getId();
-
-        // TODO: Call service to validate voucher
-        // VoucherValidationResult result = voucherService.validateVoucher(request, userId);
-
-        // TODO: Return result
-        // return ResponseEntity.ok(result);
-
-        throw new UnsupportedOperationException("TODO: Implement validateVoucher endpoint");
+        Long userId = accountDetails.getAccount().getId();
+        log.info("User {} validating voucher: {}", userId, request.getVoucherCode());
+        VoucherValidationResult result = voucherService.validateVoucher(request, userId);
+        return ResponseEntity.ok(result);
     }
 
-    /**
-     * Get all public vouchers (available vouchers)
-     * GET /api/v1/vouchers
-     * 
-     * PUBLIC - No authentication required
-     * 
-     * TODO: Implement public vouchers list endpoint
-     * - Parse pagination parameters
-     * - Call voucherService.getPublicVouchers()
-     * - Return page of public vouchers
-     */
-    @GetMapping
-    @Operation(
-        summary = "Get public vouchers",
-        description = "Get all active public vouchers that can be used"
-    )
+    @GetMapping("/public")
+    @Operation(summary = "Get public vouchers", description = "Get all active public vouchers available for use")
     public ResponseEntity<Page<VoucherResponse>> getPublicVouchers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "validUntil") String sortBy,
             @RequestParam(defaultValue = "ASC") String sortDir
     ) {
-        log.info("REST request to get public vouchers - page: {}, size: {}", page, size);
-
-        // TODO: Create pageable with sorting
-        // Sort sort = sortDir.equalsIgnoreCase("DESC") 
-        //     ? Sort.by(sortBy).descending() 
-        //     : Sort.by(sortBy).ascending();
-        // Pageable pageable = PageRequest.of(page, size, sort);
-
-        // TODO: Call service to get public vouchers
-        // Page<VoucherResponse> vouchers = voucherService.getPublicVouchers(pageable);
-
-        // TODO: Return page of vouchers
-        // return ResponseEntity.ok(vouchers);
-
-        throw new UnsupportedOperationException("TODO: Implement getPublicVouchers endpoint");
+        log.info("Fetching public vouchers - page: {}, size: {}", page, size);
+        Sort sort = sortDir.equalsIgnoreCase("DESC") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<VoucherResponse> vouchers = voucherService.getPublicVouchers(pageable);
+        return ResponseEntity.ok(vouchers);
     }
 
-    /**
-     * Get user's voucher usage history
-     * GET /api/v1/voucher-usages/me
-     * 
-     * REQUIRES AUTHENTICATION - User must be logged in
-     * 
-     * TODO: Implement user voucher usage history endpoint
-     * - Extract user ID from authentication principal
-     * - Parse pagination parameters
-     * - Call voucherService.getUserVoucherUsageHistory()
-     * - Return page of usage history
-     */
-    @GetMapping("/usages/me")
+    @GetMapping("/my-usage")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Get my voucher usage history",
-        description = "Get current user's voucher usage history"
-    )
+    @Operation(summary = "Get my voucher usage history", description = "Retrieve the current user's voucher usage history")
     public ResponseEntity<Page<VoucherUsageResponse>> getMyVoucherUsageHistory(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal CustomAccountDetails accountDetails
     ) {
-        log.info("REST request to get voucher usage history for user");
-
-        // TODO: Get user ID from CustomAccountDetails
-        // Long userId = accountDetails.getId();
-
-        // TODO: Create pageable with sorting by usedAt descending
-        // Pageable pageable = PageRequest.of(page, size, Sort.by("usedAt").descending());
-
-        // TODO: Call service to get usage history
-        // Page<VoucherUsageResponse> usageHistory = voucherService.getUserVoucherUsageHistory(userId, pageable);
-
-        // TODO: Return page of usage history
-        // return ResponseEntity.ok(usageHistory);
-
-        throw new UnsupportedOperationException("TODO: Implement getMyVoucherUsageHistory endpoint");
+        Long userId = accountDetails.getAccount().getId();
+        log.info("Fetching voucher usage history for user {}", userId);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("usedAt").descending());
+        Page<VoucherUsageResponse> usageHistory = voucherService.getUserVoucherUsageHistory(userId, pageable);
+        return ResponseEntity.ok(usageHistory);
     }
 
-    /**
-     * ============================================
-     * ADMIN ENDPOINTS
-     * ============================================
-     */
+    // =========================
+    // ADMIN ENDPOINTS
+    // =========================
 
-    /**
-     * Create a new voucher (ADMIN only)
-     * POST /api/v1/vouchers/admin
-     * 
-     * TODO: Implement create voucher endpoint
-     * - Validate request body
-     * - Call voucherService.createVoucher()
-     * - Return created voucher
-     */
-    @PostMapping("/admin")
+    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Create voucher (ADMIN)",
-        description = "Create a new voucher (Admin only)"
-    )
-    public ResponseEntity<VoucherResponse> createVoucher(
-            @Valid @RequestBody CreateVoucherRequest request
-    ) {
-        log.info("REST request to create voucher: {}", request.getCode());
-
-        // TODO: Call service to create voucher
-        // VoucherResponse voucher = voucherService.createVoucher(request);
-
-        // TODO: Return created voucher
-        // return ResponseEntity.ok(voucher);
-
-        throw new UnsupportedOperationException("TODO: Implement createVoucher endpoint");
+    @Operation(summary = "Create voucher (ADMIN)", description = "Create a new voucher (Admin only)")
+    public ResponseEntity<VoucherResponse> createVoucher(@Valid @RequestBody CreateVoucherRequest request) {
+        log.info("Admin creating voucher: {}", request.getCode());
+        VoucherResponse voucher = voucherService.createVoucher(request);
+        return ResponseEntity.ok(voucher);
     }
 
-    /**
-     * Update an existing voucher (ADMIN only)
-     * PUT /api/v1/vouchers/admin/{id}
-     * 
-     * TODO: Implement update voucher endpoint
-     * - Extract voucher ID from path
-     * - Validate request body
-     * - Call voucherService.updateVoucher()
-     * - Return updated voucher
-     */
-    @PutMapping("/admin/{id}")
+    @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Update voucher (ADMIN)",
-        description = "Update an existing voucher (Admin only)"
-    )
+    @Operation(summary = "Update voucher (ADMIN)", description = "Update an existing voucher (Admin only)")
     public ResponseEntity<VoucherResponse> updateVoucher(
             @PathVariable Long id,
             @Valid @RequestBody UpdateVoucherRequest request
     ) {
-        log.info("REST request to update voucher: {}", id);
-
-        // TODO: Call service to update voucher
-        // VoucherResponse voucher = voucherService.updateVoucher(id, request);
-
-        // TODO: Return updated voucher
-        // return ResponseEntity.ok(voucher);
-
-        throw new UnsupportedOperationException("TODO: Implement updateVoucher endpoint");
+        log.info("Admin updating voucher ID: {}", id);
+        VoucherResponse voucher = voucherService.updateVoucher(id, request);
+        return ResponseEntity.ok(voucher);
     }
 
-    /**
-     * Delete a voucher (ADMIN only)
-     * DELETE /api/v1/vouchers/admin/{id}
-     * 
-     * TODO: Implement delete voucher endpoint
-     * - Extract voucher ID from path
-     * - Call voucherService.deleteVoucher()
-     * - Return 204 No Content
-     */
-    @DeleteMapping("/admin/{id}")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Delete voucher (ADMIN)",
-        description = "Soft delete a voucher by setting status to INACTIVE (Admin only)"
-    )
+    @Operation(summary = "Delete voucher (ADMIN)", description = "Soft delete a voucher by setting status to INACTIVE")
     public ResponseEntity<Void> deleteVoucher(@PathVariable Long id) {
-        log.info("REST request to delete voucher: {}", id);
-
-        // TODO: Call service to delete voucher
-        // voucherService.deleteVoucher(id);
-
-        // TODO: Return 204 No Content
-        // return ResponseEntity.noContent().build();
-
-        throw new UnsupportedOperationException("TODO: Implement deleteVoucher endpoint");
+        log.info("Admin deleting voucher ID: {}", id);
+        voucherService.deleteVoucher(id);
+        return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Get voucher by ID (ADMIN only)
-     * GET /api/v1/vouchers/admin/{id}
-     * 
-     * TODO: Implement get voucher by ID endpoint
-     * - Extract voucher ID from path
-     * - Call voucherService.getVoucherById()
-     * - Return voucher details
-     */
-    @GetMapping("/admin/{id}")
+    @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Get voucher by ID (ADMIN)",
-        description = "Get detailed information of a voucher (Admin only)"
-    )
+    @Operation(summary = "Get voucher by ID (ADMIN)", description = "Retrieve voucher details by ID")
     public ResponseEntity<VoucherResponse> getVoucherById(@PathVariable Long id) {
-        log.info("REST request to get voucher: {}", id);
-
-        // TODO: Call service to get voucher
-        // VoucherResponse voucher = voucherService.getVoucherById(id);
-
-        // TODO: Return voucher
-        // return ResponseEntity.ok(voucher);
-
-        throw new UnsupportedOperationException("TODO: Implement getVoucherById endpoint");
+        log.info("Fetching voucher ID: {}", id);
+        VoucherResponse voucher = voucherService.getVoucherById(id);
+        return ResponseEntity.ok(voucher);
     }
 
-    /**
-     * Get all vouchers (ADMIN only)
-     * GET /api/v1/vouchers/admin
-     * 
-     * TODO: Implement get all vouchers endpoint
-     * - Parse pagination parameters
-     * - Call voucherService.getAllVouchers()
-     * - Return page of all vouchers
-     */
-    @GetMapping("/admin")
+    @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(
-        summary = "Get all vouchers (ADMIN)",
-        description = "Get all vouchers with pagination (Admin only)"
-    )
+    @Operation(summary = "Get all vouchers (ADMIN)", description = "Get all vouchers with pagination")
     public ResponseEntity<Page<VoucherResponse>> getAllVouchers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir
     ) {
-        log.info("REST request to get all vouchers - page: {}, size: {}", page, size);
-
-        // TODO: Create pageable with sorting
-        // Sort sort = sortDir.equalsIgnoreCase("DESC") 
-        //     ? Sort.by(sortBy).descending() 
-        //     : Sort.by(sortBy).ascending();
-        // Pageable pageable = PageRequest.of(page, size, sort);
-
-        // TODO: Call service to get all vouchers
-        // Page<VoucherResponse> vouchers = voucherService.getAllVouchers(pageable);
-
-        // TODO: Return page of vouchers
-        // return ResponseEntity.ok(vouchers);
-
-        throw new UnsupportedOperationException("TODO: Implement getAllVouchers endpoint");
+        log.info("Fetching all vouchers - page: {}, size: {}", page, size);
+        Sort sort = sortDir.equalsIgnoreCase("DESC") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<VoucherResponse> vouchers = voucherService.getAllVouchers(pageable);
+        return ResponseEntity.ok(vouchers);
     }
 }

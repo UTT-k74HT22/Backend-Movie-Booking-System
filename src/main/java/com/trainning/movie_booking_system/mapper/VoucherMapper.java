@@ -1,52 +1,57 @@
 package com.trainning.movie_booking_system.mapper;
 
 import com.trainning.movie_booking_system.dto.request.Voucher.CreateVoucherRequest;
+import com.trainning.movie_booking_system.dto.request.Voucher.UpdateVoucherRequest;
 import com.trainning.movie_booking_system.dto.response.Voucher.VoucherResponse;
 import com.trainning.movie_booking_system.dto.response.Voucher.VoucherUsageResponse;
 import com.trainning.movie_booking_system.entity.Voucher;
 import com.trainning.movie_booking_system.entity.VoucherUsage;
+import com.trainning.movie_booking_system.untils.enums.DiscountType;
 import org.mapstruct.*;
 
 import java.util.List;
 
 /**
- * MapStruct mapper for Voucher and VoucherUsage entities
- * Uses manual conversion methods for JSON fields
+ * Mapper cho Voucher & VoucherUsage
+ * Sử dụng MapStruct để generate implementation
  */
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface VoucherMapper {
 
-    /**
-     * Map CreateVoucherRequest to Voucher entity
-     * JSON fields will be handled manually in service
-     */
+    // ------------------------- CREATE -------------------------
     @Mapping(target = "currentUsageCount", constant = "0")
-    @Mapping(target = "applicableMovieIds", ignore = true) // Handle manually in service
-    @Mapping(target = "applicableTheaterIds", ignore = true) // Handle manually in service
-    @Mapping(target = "applicableDaysOfWeek", ignore = true) // Handle manually in service
-    @Mapping(target = "applicableTimeSlots", ignore = true) // Handle manually in service
+    @Mapping(target = "discountValue",
+            expression = "java(request.getDiscountType() == com.trainning.movie_booking_system.untils.enums.DiscountType.BUY_X_GET_Y ? java.math.BigDecimal.ZERO : request.getDiscountValue())")
+    @Mapping(target = "applicableMovieIds", ignore = true)
+    @Mapping(target = "applicableTheaterIds", ignore = true)
+    @Mapping(target = "applicableDaysOfWeek", ignore = true)
+    @Mapping(target = "applicableTimeSlots", ignore = true)
     Voucher toEntity(CreateVoucherRequest request);
 
+    // ------------------------- UPDATE -------------------------
     /**
-     * Map Voucher entity to VoucherResponse
-     * JSON fields will be handled manually in service
+     * Update Voucher entity từ UpdateVoucherRequest
+     * Bỏ qua các giá trị null trong request
      */
-    @Mapping(target = "applicableMovieIds", ignore = true) // Handle manually in service
-    @Mapping(target = "applicableTheaterIds", ignore = true) // Handle manually in service
-    @Mapping(target = "applicableDaysOfWeek", ignore = true) // Handle manually in service
-    @Mapping(target = "applicableTimeSlots", ignore = true) // Handle manually in service
-    @Mapping(target = "canUse", ignore = true) // Set manually in service
-    @Mapping(target = "userRemainingUsage", ignore = true) // Set manually in service
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "applicableMovieIds", ignore = true)
+    @Mapping(target = "applicableTheaterIds", ignore = true)
+    @Mapping(target = "applicableDaysOfWeek", ignore = true)
+    @Mapping(target = "applicableTimeSlots", ignore = true)
+    void updateEntityFromRequest(UpdateVoucherRequest request, @MappingTarget Voucher voucher);
+
+    // ------------------------- RESPONSE -------------------------
+    @Mapping(target = "applicableMovieIds", ignore = true)
+    @Mapping(target = "applicableTheaterIds", ignore = true)
+    @Mapping(target = "applicableDaysOfWeek", ignore = true)
+    @Mapping(target = "applicableTimeSlots", ignore = true)
+    @Mapping(target = "canUse", ignore = true)
+    @Mapping(target = "userRemainingUsage", ignore = true)
     VoucherResponse toResponse(Voucher voucher);
 
-    /**
-     * Map list of Voucher entities to list of VoucherResponse
-     */
     List<VoucherResponse> toResponseList(List<Voucher> vouchers);
 
-    /**
-     * Map VoucherUsage entity to VoucherUsageResponse
-     */
+    // ------------------------- VOUCHER USAGE -------------------------
     @Mapping(source = "voucher.id", target = "voucherId")
     @Mapping(source = "voucher.code", target = "voucherCode")
     @Mapping(source = "voucher.name", target = "voucherName")
@@ -56,8 +61,5 @@ public interface VoucherMapper {
     @Mapping(source = "booking.status", target = "bookingStatus")
     VoucherUsageResponse toUsageResponse(VoucherUsage voucherUsage);
 
-    /**
-     * Map list of VoucherUsage entities to list of VoucherUsageResponse
-     */
     List<VoucherUsageResponse> toUsageResponseList(List<VoucherUsage> voucherUsages);
 }
