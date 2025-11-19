@@ -12,7 +12,6 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -25,10 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
-@EnableWebSecurity
 @RequiredArgsConstructor
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
@@ -36,35 +32,43 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtFilter jwtFilter;
 
-    /**
-     * Public endpoints - không cần authentication
-     * Bao gồm:
-     * - Authentication endpoints (register, login, etc.)
-     * - Public read-only resources (movies, theaters, showtimes - GET only)
-     * - Payment webhooks (verified by signature)
-     * - API documentation
-     */
-    public static final String[] PUBLIC_ENDPOINTS = {
+    //  Public endpoints (không cần token)
+    private static final String[] PUBLIC_ENDPOINTS = {
             "/",
-            // ===== AUTHENTICATION =====
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/logout",
-            "/api/v1/auth/activate",
-            "/api/v1/auth/refresh-token",
-            "/api/v1/auth/forgot-password",
-            "/api/v1/auth/reset-password",
-            "/api/v1/otp/**",
-            
-            // ===== PAYMENT WEBHOOKS (verified by signature) =====
-            "/api/v1/payments/vnpay/callback",
-            "/api/v1/payments/webhook",
-            
-            // ===== API DOCUMENTATION =====
+            "/api/auth/**",
+            "/api/v1/auth/**",   // thêm v1
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**"
+    };
+
+    // Public GET endpoints (người dùng xem phim, suất chiếu...)
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
+            "/api/movies/**",
+            "/api/v1/movies/**",      // thêm v1
+            "/api/theaters/**",
+            "/api/v1/theaters/**",
+            "/api/showtimes/**",
+            "/api/v1/showtimes/**",
+            "/api/seats/**",
+            "/api/v1/seats/**"
+    };
+
+    // User endpoints (cần token)
+    private static final String[] USER_ENDPOINTS = {
+            "/api/bookings/**",
+            "/api/v1/bookings/**",
+            "/api/vouchers/validate",
+            "/api/v1/vouchers/validate",
+            "/api/vouchers/apply",
+            "/api/v1/vouchers/apply"
+    };
+
+    // Admin endpoints
+    private static final String[] ADMIN_ENDPOINTS = {
+            "/api/admin/**",
+            "/api/v1/admin/**"
     };
 
     @Bean
@@ -74,10 +78,10 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(customUserDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean
@@ -88,51 +92,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) //  dùng cấu hình cors thật
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authz -> authz
-                        // ===== PUBLIC ENDPOINTS =====
+                        // Public hoàn toàn
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        
-                        // ===== PUBLIC READ-ONLY (GET only) =====
-                        // Movies - public can view, search
-                        .requestMatchers(HttpMethod.GET, "/api/v1/movies/**").permitAll()
-                        
-                        // Theaters - public can view
-                        .requestMatchers(HttpMethod.GET, "/api/v1/theaters/**").permitAll()
-                        
-                        // Showtimes - public can view schedule
-                        .requestMatchers(HttpMethod.GET, "/api/v1/showtimes/**").permitAll()
-                        
-                        // Screens & Seats - public can view layout
-                        .requestMatchers(HttpMethod.GET, "/api/v1/screens/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/seats/**").permitAll()
-                        
-                        // Vouchers - public can view available vouchers
-                        .requestMatchers(HttpMethod.GET, "/api/v1/vouchers").permitAll()
-                        
-                        // ===== ADMIN ENDPOINTS =====
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        
-                        // ===== AUTHENTICATED ENDPOINTS =====
-                        // Bookings - require authentication
-                        .requestMatchers("/api/v1/bookings/**").authenticated()
-                        
-                        // Payments - require authentication (except webhooks already in PUBLIC_ENDPOINTS)
-                        .requestMatchers("/api/v1/payments/**").authenticated()
-                        
-                        // Seat holds - require authentication
-                        .requestMatchers("/api/v1/seat-holds/**").authenticated()
-                        
-                        // Voucher operations - require authentication
-                        .requestMatchers("/api/v1/vouchers/validate").authenticated()
-                        .requestMatchers("/api/v1/voucher-usages/**").authenticated()
-
-                        // All other requests require authentication
+                        // GET public
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                        // User authenticated
+                        .requestMatchers(USER_ENDPOINTS).authenticated()
+                        // Admin
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
+                        // Còn lại cần auth
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
