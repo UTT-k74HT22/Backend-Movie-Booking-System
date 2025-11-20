@@ -92,10 +92,15 @@ public class AuthController {
     }
 
     /**
+<<<<<<< HEAD
      * Quên mật khẩu
      * @param request email
      * @return message
      */
+=======
+    *  Forgot password
+    * */
+>>>>>>> 27efa744756701f56c10ae702c2fe328749d193d
     @PostMapping("/forgot-password")
     public ResponseEntity<BaseResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         log.info("[AUTH] API forgot password for email: {}", request.getEmail());
