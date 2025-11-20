@@ -25,7 +25,7 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * User sử dụng đăng kí tài khooản mới
+     * User sử dụng đăng kí tài khoản mới
      * @param request thông tin cá nhân
      * @return message
      */
@@ -79,6 +79,7 @@ public class AuthController {
         log.info("[AUTH] API refresh");
         return ResponseEntity.ok(BaseResponse.success(authService.refreshToken(request.getRefreshToken())));
     }
+
     /**
      * Logout
      * @param request refresh token
@@ -92,15 +93,10 @@ public class AuthController {
     }
 
     /**
-<<<<<<< HEAD
      * Quên mật khẩu
      * @param request email
      * @return message
      */
-=======
-    *  Forgot password
-    * */
->>>>>>> 27efa744756701f56c10ae702c2fe328749d193d
     @PostMapping("/forgot-password")
     public ResponseEntity<BaseResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         log.info("[AUTH] API forgot password for email: {}", request.getEmail());
