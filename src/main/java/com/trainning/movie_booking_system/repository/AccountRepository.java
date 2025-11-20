@@ -18,4 +18,18 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
      * @return
      */
     Optional<Account> findByEmail(String email);
+    
+    /**
+     * Kiểm tra email đã tồn tại chưa
+     * @param email email cần kiểm tra
+     * @return true nếu email đã tồn tại, false nếu chưa
+     */
+    boolean existsByEmail(String email);
+    
+    /**
+     * Kiểm tra username đã tồn tại chưa
+     * @param username username cần kiểm tra
+     * @return true nếu username đã tồn tại, false nếu chưa
+     */
+    boolean existsByUsername(String username);
 }

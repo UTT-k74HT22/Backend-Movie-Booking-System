@@ -7,16 +7,14 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
     import jakarta.validation.constraints.Pattern;
     import jakarta.validation.constraints.Size;
-    import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+    import lombok.*;
 
 @Entity
 @Table(
         name = "user"
 )
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
