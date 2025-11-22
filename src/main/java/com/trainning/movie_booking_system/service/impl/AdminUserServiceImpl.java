@@ -26,9 +26,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // ======================================================================
     // CREATE USER
-    // ======================================================================
     @Override
     @Transactional
     public UserAdminResponse createUser(CreateUserRequest request) {
@@ -91,9 +89,9 @@ public class AdminUserServiceImpl implements AdminUserService {
         return UserAdminMapper.toResponse(user);
     }
 
-    // ======================================================================
+
     // GET USER BY ID
-    // ======================================================================
+
     @Override
     @Transactional(readOnly = true)
     public UserAdminResponse getUserById(Long id) {
@@ -106,9 +104,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
     }
 
-    // ======================================================================
+
     // UPDATE USER
-    // ======================================================================
     @Override
     @Transactional
     public UserAdminResponse updateUser(Long id, UpdateUserRequest request) {
@@ -160,9 +157,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         return UserAdminMapper.toResponse(user);
     }
 
-    // ======================================================================
     // DEACTIVATE USER
-    // ======================================================================
     @Override
     @Transactional
     public void deactivateUser(Long id) {
@@ -176,10 +171,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         user.getAccount().setStatus(UserStatus.INACTIVE);
         userRepository.save(user);
     }
-
-    // ======================================================================
     // GET ALL USERS
-    // ======================================================================
     @Override
     @Transactional(readOnly = true)
     public Page<UserAdminResponse> getAllUsers(Pageable pageable) {
