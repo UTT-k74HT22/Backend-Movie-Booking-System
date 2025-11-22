@@ -17,8 +17,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -95,38 +94,35 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         log.info("Starting login for username: {}", request.getUsername());
+
         try {
-            Account account = authenticationAndValidateAccount(request);
-            log.info("Account {} authenticated successfully", account.getUsername());
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
 
-            String accessToken;
-            String refreshToken;
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            CustomAccountDetails accountDetails = (CustomAccountDetails) authentication.getPrincipal();
+            Account account = accountDetails.account();
 
-            try {
-                accessToken = jwtProvider.generateToken(account);
-                refreshToken = jwtProvider.generateRefreshToken(account);
-            } catch (Exception e) {
-                log.error("Error generating tokens for {}: {}", account.getUsername(), e.getMessage(), e);
-                throw new InternalServerErrorException("Cannot generate JWT tokens");
-            }
+            // Tạo token
+            String accessToken = jwtProvider.generateToken(account);
+            String refreshToken = jwtProvider.generateRefreshToken(account);
 
-            try {
-                String key = buildRedisKey(account.getUsername());
-                long ttl = (jwtProvider.getExpiration(refreshToken).getTime() - System.currentTimeMillis()) / 1000;
-                redisService.set(key, refreshToken, ttl, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                log.error("Redis error saving refresh token for {}: {}", account.getUsername(), e.getMessage(), e);
-                throw new InternalServerErrorException("Failed to store refresh token");
-            }
+            // Lưu refresh token vào Redis
+            String key = buildRedisKey(account.getUsername());
+            long ttl = (jwtProvider.getExpiration(refreshToken).getTime() - System.currentTimeMillis()) / 1000;
+            redisService.set(key, refreshToken, ttl, TimeUnit.SECONDS);
 
             log.info("Login successful for username: {}", account.getUsername());
             return toResponse(accessToken, refreshToken);
 
-        } catch (BadRequestException e) {
-            log.warn("Login failed (BadRequest) for {}: {}", request.getUsername(), e.getMessage());
-            throw e;
+        } catch (BadCredentialsException e) {
+            throw new BadRequestException("Invalid username or password");
+        } catch (DisabledException e) {
+            throw new BadRequestException("Account is inactive or email not verified");
+        } catch (LockedException e) {
+            throw new BadRequestException("Account is locked");
         } catch (AuthenticationException e) {
-            log.warn("Authentication failed for {}: {}", request.getUsername(), e.getMessage());
             throw new BadRequestException("Invalid username or password");
         } catch (Exception e) {
             log.error("Unexpected error during login for {}: {}", request.getUsername(), e.getMessage(), e);
@@ -215,8 +211,11 @@ public class AuthServiceImpl implements AuthService {
         Account account = accountRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadRequestException("Email not found in system"));
 
-        if (!UserStatus.ACTIVE.equals(account.getStatus())) {
-            throw new BadRequestException("Account is not active");
+        switch (account.getStatus()) {
+            case ACTIVE -> { /* ok */ }
+            case INACTIVE -> throw new BadRequestException("Account is inactive. Please contact support.");
+            case LOCKED -> throw new BadRequestException("Account is locked. Please contact support.");
+            default -> throw new InternalServerErrorException("Unknown account status");
         }
 
         try {
