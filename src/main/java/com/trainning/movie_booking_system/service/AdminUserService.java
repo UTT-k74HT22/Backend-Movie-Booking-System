@@ -17,5 +17,12 @@ public interface AdminUserService {
 
     void deactivateUser(Long id);
 
+    void activateUser(Long id, Long adminId);
+
+    void lockUser(Long id);
+
+    void unlockUser(Long id);
+
+
     Page<UserAdminResponse> getAllUsers(Pageable pageable);
 }

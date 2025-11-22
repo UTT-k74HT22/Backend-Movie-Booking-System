@@ -1,11 +1,9 @@
 package com.trainning.movie_booking_system.exception;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(HttpStatus.CONFLICT)
-public class AlreadyExistsException extends RuntimeException {
+public class AlreadyExistsException extends BaseException {
     public AlreadyExistsException(String message) {
-        super(message);
+        super(message, HttpStatus.CONFLICT);
     }
 }
