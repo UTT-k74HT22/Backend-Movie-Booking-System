@@ -8,6 +8,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class ShowtimeRequest implements Serializable {
 

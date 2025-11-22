@@ -132,3 +132,18 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+vnpay:
+  tmnCode: ANBB2CT1
+  hashSecret: HV8WLKRENFNZP2ECO14M02RS4HM7E5KN
+  payUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  
+  # RETURN URL Configuration:
+  # - LOCAL TESTING (no frontend): http://localhost:8080/api/v1/payments/vnpay/callback
+  #   → VNPay redirects directly to backend, returns JSON
+  # - PRODUCTION (with frontend): https://yourfrontend.com/payment/result
+  #   → VNPay redirects to frontend, frontend calls /api/v1/payments/vnpay/verify with params
+  returnUrl: http://localhost:8080/api/v1/payments/vnpay/callback
+  
+  # IPN URL (webhook for async notification - optional)
+  ipnUrl: http://localhost:8080/api/v1/payments/webhook

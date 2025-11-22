@@ -13,7 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/screens")
+@RequestMapping("/api/v1/screens")
 @RequiredArgsConstructor
 @Validated
 @Slf4j

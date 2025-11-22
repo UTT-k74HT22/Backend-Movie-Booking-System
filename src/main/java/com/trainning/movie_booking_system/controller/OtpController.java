@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/otp")
+@RequestMapping("/api/v1/otp")
 @RequiredArgsConstructor
 @Slf4j
 @Validated
@@ -22,7 +22,15 @@ public class OtpController {
 
     private final OtpService otpService;
 
-    @PostMapping("/resend")
+    /**
+     * Send/Resend OTP to email
+     * PUBLIC - No authentication required
+     * POST /api/v1/otp/send
+     * 
+     * @param request email and OTP type
+     * @return success message
+     */
+    @PostMapping("/send")
     public ResponseEntity<?> resend(@RequestBody @Valid SendOtpRequest request) {
         log.info("[OTP] Send OTP to email: {}", request.getEmail());
         otpService.sendOtp(request.getEmail(), request.getType());

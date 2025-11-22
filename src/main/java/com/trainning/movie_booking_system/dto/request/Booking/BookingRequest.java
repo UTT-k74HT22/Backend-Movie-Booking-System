@@ -9,7 +9,7 @@ public class BookingRequest {
     @NotNull(message = "Showtime ID must not be null")
     private Long showtimeId;
 
-    private Long voucherId;
+    private String voucherId;
 
     @NotNull(message = "Seat IDs must not be null")
     private List<Long> seatIds;

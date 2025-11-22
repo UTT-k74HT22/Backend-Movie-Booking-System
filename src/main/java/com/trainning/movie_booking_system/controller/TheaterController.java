@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/api/theaters")
+@RequestMapping("/api/v1/theaters")
 @RequiredArgsConstructor
 @Validated
 @Slf4j

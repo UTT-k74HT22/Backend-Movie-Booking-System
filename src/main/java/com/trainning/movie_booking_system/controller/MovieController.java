@@ -22,7 +22,7 @@ import java.time.LocalDate;
 import java.util.Set;
 
 @RestController
-@RequestMapping("/api/movies")
+@RequestMapping("/api/v1/movies")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
@@ -74,10 +74,10 @@ public class MovieController {
 
     /**
      * Get a movie by its ID
+     * PUBLIC - No authentication required
      * @param movieId the ID of the movie to retrieve
      * @return the movie response
      */
-    @PreAuthorize(value = "permitAll()")
     @GetMapping("/{movieId}")
     public ResponseEntity<?> getById(@PathVariable Long movieId) {
         log.info("[MOVIE-CONTROLLER] Get movie by ID request: {}", movieId);
@@ -86,11 +86,11 @@ public class MovieController {
 
     /**
      * Get all movies with pagination
+     * PUBLIC - No authentication required
      * @param pageNumber the page number
      * @param pageSize the size of the page
      * @return a paginated response of movies
      */
-    @PreAuthorize(value = "permitAll()")
     @GetMapping
     public ResponseEntity<?> getAlls(@RequestParam(name = "pageNumber", defaultValue = "0") int pageNumber,
                                      @RequestParam(name = "pageSize", defaultValue = "10") int pageSize) {
@@ -101,6 +101,7 @@ public class MovieController {
 
     /**
      * Search movies based on filters with pagination
+     * PUBLIC - No authentication required
      *
      * @param keyword      keyword to search in title or description
      * @param genres       set of genres to filter
@@ -118,7 +119,6 @@ public class MovieController {
      * @param direction    sort direction (ASC or DESC)
      * @return a paginated response of movies matching the search criteria
      */
-    @PreAuthorize(value = "permitAll()")
     @GetMapping("/search")
     public ResponseEntity<?> searchMovies(
             @RequestParam(required = false) String keyword,

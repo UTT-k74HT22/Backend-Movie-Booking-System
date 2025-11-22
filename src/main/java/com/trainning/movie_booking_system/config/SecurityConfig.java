@@ -3,7 +3,6 @@ package com.trainning.movie_booking_system.config;
 import com.trainning.movie_booking_system.security.CustomUserDetailsService;
 import com.trainning.movie_booking_system.security.JwtFilter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,7 +12,6 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,12 +22,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-
-import static org.springframework.security.config.Customizer.withDefaults;
+import java.util.List;
 
 @Configuration
-@EnableWebSecurity
 @RequiredArgsConstructor
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
@@ -37,42 +32,43 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtFilter jwtFilter;
 
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
-
-    @Value("${cors.allowed-methods}")
-    private String allowedMethods;
-
-    @Value("${cors.allowed-headers}")
-    private String allowedHeaders;
-
-    @Value("${cors.allow-credentials}")
-    private boolean allowCredentials;
-
-    // Endpoints hoàn toàn public (không cần auth)
-    public static final String[] PUBLIC_AUTH_ENDPOINTS = {
+    //  Public endpoints (không cần token)
+    private static final String[] PUBLIC_ENDPOINTS = {
             "/",
-            "/api/auth/register",
-            "/api/auth/login",
-            "/api/auth/logout",
-            "/api/auth/refresh-token",
-            "/api/auth/activate",
-            "/api/auth/verify-otp",
-            "/api/auth/forgot-password",
-            "/api/auth/reset-password",
-            "/api/otp/**",
+            "/api/auth/**",
+            "/api/v1/auth/**",   // thêm v1
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
             "/webjars/**"
     };
 
-    // Chỉ cho phép GET public, các method khác cần ADMIN
-    public static final String[] PUBLIC_GET_ENDPOINTS = {
+    // Public GET endpoints (người dùng xem phim, suất chiếu...)
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
             "/api/movies/**",
+            "/api/v1/movies/**",      // thêm v1
             "/api/theaters/**",
+            "/api/v1/theaters/**",
             "/api/showtimes/**",
-            "/api/seats/**"
+            "/api/v1/showtimes/**",
+            "/api/seats/**",
+            "/api/v1/seats/**"
+    };
+
+    // User endpoints (cần token)
+    private static final String[] USER_ENDPOINTS = {
+            "/api/bookings/**",
+            "/api/v1/bookings/**",
+            "/api/vouchers/validate",
+            "/api/v1/vouchers/validate",
+            "/api/vouchers/apply",
+            "/api/v1/vouchers/apply"
+    };
+
+    // Admin endpoints
+    private static final String[] ADMIN_ENDPOINTS = {
+            "/api/admin/**",
+            "/api/v1/admin/**"
     };
 
     @Bean
@@ -82,10 +78,10 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(customUserDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean
@@ -96,24 +92,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) //  dùng cấu hình cors thật
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authz -> authz
-                        // Endpoints hoàn toàn public
-                        .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
-
-                        // Chỉ GET là public, còn lại cần ADMIN
+                        // Public hoàn toàn
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        // GET public
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.POST, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, PUBLIC_GET_ENDPOINTS).hasRole("ADMIN")
-
-                        // Tất cả request khác cần authenticated
+                        // User authenticated
+                        .requestMatchers(USER_ENDPOINTS).authenticated()
+                        // Admin
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
+                        // Còn lại cần auth
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -124,10 +118,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
-        config.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
-        config.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
-        config.setAllowCredentials(allowCredentials);
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

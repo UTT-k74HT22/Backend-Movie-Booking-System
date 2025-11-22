@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
  * Deadline: [DATE]
  */
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
@@ -40,6 +40,9 @@ public class PaymentController {
      * Tạo payment URL và redirect user sang Payment Gateway
      * User gọi sau khi tạo booking thành công (status = PENDING_PAYMENT)
      * 
+     * REQUIRES AUTHENTICATION - User must be logged in
+     * POST /api/v1/bookings/{bookingId}/payment
+     * 
      * ⚠️ TODO: Implement real payment gateway integration
      * - Generate signed payment request
      * - Return actual gateway URL
@@ -48,7 +51,7 @@ public class PaymentController {
      * @param bookingId ID của booking cần thanh toán
      * @return Payment URL từ gateway
      */
-    @PostMapping("/create/{bookingId}")
+    @PostMapping("/bookings/{bookingId}/payment")
     public ResponseEntity<?> createPayment(@PathVariable Long bookingId) {
         log.info("[PAYMENT-CONTROLLER] Create payment for booking {}", bookingId);
 
@@ -61,8 +64,62 @@ public class PaymentController {
     }
 
     /**
-     * Payment Gateway callback endpoint
+     * VNPay return callback endpoint (LOCAL TESTING MODE)
+     * VNPay sẽ redirect user về đây sau khi thanh toán (Success hoặc Fail)
+     * 
+     * PUBLIC - No authentication (verified by VNPay signature)
+     * GET /api/v1/payments/vnpay/callback?vnp_Amount=...&vnp_TxnRef=...&vnp_SecureHash=...
+     * 
+     * ⚠️ CHÚ Ý: Trong production với frontend, đổi vnpay.returnUrl sang frontend URL
+     * Ví dụ: https://yourfrontend.com/payment/result
+     * Frontend sẽ nhận params và gọi /vnpay/verify để xử lý
+     */
+    @GetMapping("/vnpay/callback")
+    public ResponseEntity<?> handleVNPayReturn(jakarta.servlet.http.HttpServletRequest request) {
+        log.info("[PAYMENT-CONTROLLER] VNPay return callback received (LOCAL MODE)");
+        
+        var response = paymentService.handleVNPayReturn(request);
+        
+        // TODO: Redirect về frontend success/failure page thay vì return JSON
+        // For now, return JSON response for testing
+        return ResponseEntity.ok(BaseResponse.success(
+                response,
+                "Payment " + response.getStatus().toLowerCase()
+        ));
+    }
+
+    /**
+     * VNPay verify endpoint (PRODUCTION MODE - Frontend gọi)
+     * Frontend nhận params từ VNPay redirect, forward sang đây để verify
+     * 
+     * REQUIRES AUTHENTICATION - User must be logged in
+     * POST /api/v1/payments/vnpay/verify
+     * Body: Forward all query params from VNPay as request params
+     * 
+     * Usage:
+     * 1. VNPay redirect về: https://yourfrontend.com/payment/result?vnp_Amount=...
+     * 2. Frontend extract params, gọi API này
+     * 3. Backend verify signature, update booking
+     * 4. Frontend hiển thị success/failure
+     */
+    @PostMapping("/vnpay/verify")
+    public ResponseEntity<?> verifyVNPayPayment(jakarta.servlet.http.HttpServletRequest request) {
+        log.info("[PAYMENT-CONTROLLER] VNPay verify from frontend (PRODUCTION MODE)");
+        
+        var response = paymentService.handleVNPayReturn(request);
+        
+        return ResponseEntity.ok(BaseResponse.success(
+                response,
+                "Payment verification completed"
+        ));
+    }
+
+    /**
+     * Payment Gateway webhook endpoint
      * Gateway sẽ gọi endpoint này sau khi user thanh toán
+     * 
+     * PUBLIC - No authentication (verified by signature)
+     * POST /api/v1/payments/webhook
      * 
      * ⚠️ TODO: CRITICAL - Implement signature verification
      * - Verify signature từ gateway (HMAC/RSA)
@@ -76,7 +133,7 @@ public class PaymentController {
      * @param request Payment callback data từ gateway
      * @return Payment result
      */
-    @PostMapping("/callback")
+    @PostMapping("/webhook")
     public ResponseEntity<?> paymentCallback(@RequestBody @Valid PaymentRequest request) {
         log.info("[PAYMENT-CONTROLLER] Payment callback for booking {}", request.getBookingId());
 
@@ -94,6 +151,9 @@ public class PaymentController {
      * Verify payment status
      * Frontend có thể gọi để check trạng thái payment
      * 
+     * REQUIRES AUTHENTICATION - User must be logged in
+     * GET /api/v1/bookings/{bookingId}/payment-status
+     * 
      * ⚠️ TODO: Query payment gateway API để verify status
      * - Call gateway's transaction query API
      * - Compare with local booking status
@@ -102,7 +162,7 @@ public class PaymentController {
      * @param bookingId ID của booking
      * @return Payment status
      */
-    @GetMapping("/verify/{bookingId}")
+    @GetMapping("/bookings/{bookingId}/payment-status")
     public ResponseEntity<?> verifyPayment(@PathVariable Long bookingId) {
         log.info("[PAYMENT-CONTROLLER] Verify payment for booking {}", bookingId);
 
@@ -118,10 +178,13 @@ public class PaymentController {
      * Cancel payment (user cancel hoặc timeout)
      * User có thể gọi để cancel booking trước khi hết timeout
      *
+     * REQUIRES AUTHENTICATION - User must be logged in
+     * DELETE /api/v1/bookings/{bookingId}/payment
+     *
      * @param bookingId ID của booking
      * @return Success message
      */
-    @PostMapping("/cancel/{bookingId}")
+    @DeleteMapping("/bookings/{bookingId}/payment")
     public ResponseEntity<?> cancelPayment(@PathVariable Long bookingId) {
         log.info("[PAYMENT-CONTROLLER] Cancel payment for booking {}", bookingId);
 
