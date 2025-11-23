@@ -104,7 +104,7 @@ public class MovieServiceImpl implements MovieService {
         log.info("MOVIE SERVICE] - Delete movie with ID: {}", movieId);
         Movie movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
-        movie.setStatus(movieStatus);
+        movie.setStatus(MovieStatus.ENDED);
         movieRepository.save(movie);
     }
 
