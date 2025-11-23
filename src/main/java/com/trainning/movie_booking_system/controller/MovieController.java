@@ -61,7 +61,6 @@ public class MovieController {
      * Delete a movie by its ID
      *
      * @param movieId     the ID of the movie to delete
-     * @param movieStatus the status of the movie
      * @return ResponseEntity indicating the result of the delete operation
      */
     @PreAuthorize(value = "hasAnyAuthority('ROLE_ADMIN', 'ROLE_THEATER_MANAGEMENT')")

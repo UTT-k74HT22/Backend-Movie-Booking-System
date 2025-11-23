@@ -32,4 +32,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         where b.id = :id
     """)
     Optional<Booking> findByIdWithSeats(@Param("id") Long id);
+
+    /**
+     * Find all bookings by their status.
+     * @param status the booking status to filter by
+     *               @return a list of bookings with the specified status
+     * */
+    List<Booking> findAllByStatus(BookingStatus status);
 }

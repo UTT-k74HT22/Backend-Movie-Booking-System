@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.config.VnPayProperties;
+import com.trainning.movie_booking_system.dto.request.Payment.PaymentRequest;
 import com.trainning.movie_booking_system.helper.VnPay.VnPayHelper;
 import com.trainning.movie_booking_system.service.VnPayService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,9 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,17 +21,11 @@ public class VnPayServiceImpl implements VnPayService {
     private final VnPayProperties props;
 
     /**
-     * Create a payment URL for VnPay gateway
-     *
-     * @param txnRef    Transaction reference
-     * @param amountVnd Amount in VND
-     * @param orderInfo Order information
-     * @param clientIp  Client IP address
-     * @return Payment URL as a String
+     * Tạo payment URL cho VNPay gateway
      */
     @Override
     public String createPaymentUrl(String txnRef, long amountVnd, String orderInfo, String clientIp) {
-        log.info("Creating Payment URL start");
+        log.info("Creating Payment URL for TXN {}", txnRef);
 
         Map<String, String> vnp = new HashMap<>();
         vnp.put("vnp_Version", "2.1.0");
@@ -51,7 +43,7 @@ public class VnPayServiceImpl implements VnPayService {
                 .format(java.time.LocalDateTime.now());
         vnp.put("vnp_CreateDate", now);
 
-        // Ký
+        // Ký dữ liệu
         Map<String, String> toSign = new HashMap<>(vnp);
         toSign.remove("vnp_Url");
         String hash = VnPayHelper.secureHash(props.getHashSecret(), toSign);
@@ -62,16 +54,13 @@ public class VnPayServiceImpl implements VnPayService {
     }
 
     /**
-     * Verify the integrity of VnPay callback parameters
-     *
-     * @param params Map of callback parameters from VnPay
-     * @return true if the signature is valid, false otherwise
+     * Verify signature từ callback VNPay
      */
     @Override
     public boolean verify(Map<String, String> params) {
         String receivedHash = params.get("vnp_SecureHash");
         if (receivedHash == null || receivedHash.isEmpty()) {
-            log.warn("Missing vnp_SecureHash in parameters");
+            log.warn("Missing vnp_SecureHash");
             return false;
         }
         Map<String, String> toSign = new HashMap<>(params);
@@ -81,48 +70,86 @@ public class VnPayServiceImpl implements VnPayService {
         String calculatedHash = VnPayHelper.secureHash(props.getHashSecret(), toSign);
         boolean isValid = receivedHash.equalsIgnoreCase(calculatedHash);
         if (!isValid) {
-            log.warn("Invalid VnPay signature: expected {}, got {}", calculatedHash, receivedHash);
+            log.warn("Invalid VNPay signature: expected {}, got {}", calculatedHash, receivedHash);
         }
         return isValid;
     }
 
+    @Override
+    public boolean verifySignature(PaymentRequest requestData) {
+        if (requestData == null || requestData.getData() == null) return false;
+        Map<String, String> params = new HashMap<>(requestData.getData());
+        return verify(params);
+    }
+
+    @Override
+    public boolean verifyPaymentCallbackSignature(PaymentRequest requestData) {
+        return verifySignature(requestData);
+    }
+
     /**
-     * Process VNPay return callback
-     * Simple approach like the demo project
-     *
-     * @param request HttpServletRequest containing VNPay callback params
-     * @return 1 = success, 0 = failed, -1 = invalid signature
+     * Parse callback từ VNPay (Return URL / Webhook)
+     */
+    @Override
+    public PaymentRequest parseRequest(HttpServletRequest request) {
+        Map<String, String> params = new HashMap<>();
+        Enumeration<String> paramNames = request.getParameterNames();
+        while (paramNames.hasMoreElements()) {
+            String key = paramNames.nextElement();
+            params.put(key, request.getParameter(key));
+        }
+
+        // Fix lỗi NumberFormatException: tách bookingId từ vnp_TxnRef
+        String txnRef = params.get("vnp_TxnRef"); // e.g., "TXN_1763908409839_13"
+        Long bookingId = null;
+        try {
+            if (txnRef != null && txnRef.contains("_")) {
+                String[] parts = txnRef.split("_");
+                bookingId = Long.parseLong(parts[2]); // phần cuối là bookingId
+            }
+        } catch (NumberFormatException e) {
+            log.error("Failed to parse bookingId from vnp_TxnRef: {}", txnRef);
+        }
+
+        PaymentRequest pr = PaymentRequest.builder()
+                .bookingId(bookingId)
+                .transactionId(txnRef)
+                .status("00".equals(params.get("vnp_TransactionStatus")) ? "SUCCESS" : "FAILED")
+                .paymentMethod(params.get("vnp_BankCode"))
+                .amount(params.get("vnp_Amount"))
+                .transactionDate(params.get("vnp_PayDate"))
+                .responseCode(params.get("vnp_ResponseCode"))
+                .signature(params.get("vnp_SecureHash"))
+                .extraData(params.toString())
+                .data(params)
+                .build();
+        return pr;
+    }
+
+    /**
+     * Simple return code for frontend demo
+     * 1 = success, 0 = failed, -1 = invalid signature
      */
     @Override
     public int orderReturn(HttpServletRequest request) {
         Map<String, String> fields = new HashMap<>();
-        
-        // Extract all params
-        for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements();) {
-            String fieldName = params.nextElement();
-            String fieldValue = request.getParameter(fieldName);
-            if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                fields.put(fieldName, fieldValue);
-            }
+        Enumeration<String> params = request.getParameterNames();
+        while (params.hasMoreElements()) {
+            String key = params.nextElement();
+            fields.put(key, request.getParameter(key));
         }
 
-        String vnpSecureHash = request.getParameter("vnp_SecureHash");
-        
-        // Remove hash params for verification
+        String vnpSecureHash = fields.get("vnp_SecureHash");
+
+        // Remove hash fields for verification
         fields.remove("vnp_SecureHashType");
         fields.remove("vnp_SecureHash");
-        
-        // Verify signature
+
         if (verify(fields)) {
-            // Check transaction status
-            String transactionStatus = request.getParameter("vnp_TransactionStatus");
-            if ("00".equals(transactionStatus)) {
-                return 1; // SUCCESS
-            } else {
-                return 0; // FAILED
-            }
+            String transactionStatus = fields.get("vnp_TransactionStatus");
+            return "00".equals(transactionStatus) ? 1 : 0;
         } else {
-            return -1; // INVALID SIGNATURE
+            return -1;
         }
     }
 }

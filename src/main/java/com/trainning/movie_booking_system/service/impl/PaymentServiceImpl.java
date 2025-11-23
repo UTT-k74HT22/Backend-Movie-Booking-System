@@ -3,6 +3,7 @@ package com.trainning.movie_booking_system.service.impl;
 import com.trainning.movie_booking_system.dto.request.Payment.PaymentRequest;
 import com.trainning.movie_booking_system.dto.response.Payment.PaymentResponse;
 import com.trainning.movie_booking_system.entity.Booking;
+import com.trainning.movie_booking_system.entity.PaymentTransaction;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
@@ -11,14 +12,21 @@ import com.trainning.movie_booking_system.repository.PaymentTransactionRepositor
 import com.trainning.movie_booking_system.service.PaymentService;
 import com.trainning.movie_booking_system.service.VnPayService;
 import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.untils.enums.PaymentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * PaymentServiceImpl - Implement PaymentService, xử lý logic thanh toán
+ */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -29,11 +37,12 @@ public class PaymentServiceImpl implements PaymentService {
     private final VnPayService vnPayService;
     private final PaymentTransactionRepository paymentTransactionRepository;
 
+    /**
+     * Tạo payment URL và redirect user sang gateway
+     */
     @Override
     @Transactional
     public String createPaymentUrl(Long bookingId) {
-        log.info("[PAYMENT] Creating payment URL for booking {}", bookingId);
-
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found: " + bookingId));
 
@@ -45,56 +54,57 @@ public class PaymentServiceImpl implements PaymentService {
 
         String txnRef = "TXN_" + System.currentTimeMillis() + "_" + bookingId;
 
-        // Tạo transaction với finalAmount
-        var paymentTransaction = com.trainning.movie_booking_system.entity.PaymentTransaction.builder()
+        PaymentTransaction transaction = PaymentTransaction.builder()
                 .booking(booking)
                 .gatewayType(com.trainning.movie_booking_system.untils.enums.PaymentGatewayType.VNPAY)
                 .transactionId(txnRef)
                 .amount(booking.getTotalPrice())
                 .discountAmount(booking.getDiscountAmount())
-                .finalAmount(booking.getFinalAmount()) // đúng số đã giảm
+                .finalAmount(booking.getFinalAmount())
                 .currency("VND")
-                .status(com.trainning.movie_booking_system.untils.enums.PaymentStatus.PENDING)
+                .status(PaymentStatus.PENDING)
                 .ipAddress("127.0.0.1")
-                .initiatedAt(java.time.LocalDateTime.now())
+                .initiatedAt(LocalDateTime.now())
                 .build();
 
-        paymentTransactionRepository.save(paymentTransaction);
-        log.info("[PAYMENT] Created payment transaction: {}", txnRef);
+        paymentTransactionRepository.save(transaction);
 
-        // Gửi VNPay: VNPay tính số tiền *100
-        // finalAmount đã là VND, chỉ cần làm tròn về số nguyên
         long amountVnd = booking.getFinalAmount().setScale(0, RoundingMode.HALF_UP).longValue();
         String orderInfo = "Thanh toan ve xem phim - Booking #" + bookingId;
         String clientIp = "127.0.0.1";
 
-        String paymentUrl = vnPayService.createPaymentUrl(txnRef, amountVnd, orderInfo, clientIp);
-        log.info("[PAYMENT] Payment URL created successfully for booking {}", bookingId);
-
-        return paymentUrl;
+        return vnPayService.createPaymentUrl(txnRef, amountVnd, orderInfo, clientIp);
     }
 
-    @Override
+    /**
+     * Xử lý callback từ VNPay (Return URL hoặc IPN)
+     * Internal method, KHÔNG override interface
+     */
     @Transactional
-    public PaymentResponse handleVNPayReturn(jakarta.servlet.http.HttpServletRequest request) {
-        log.info("[PAYMENT] Processing VNPay return callback");
+    public PaymentResponse processPaymentCallback(PaymentRequest request) {
+        // Verify signature VNPay trước khi update
+        if (!vnPayService.verifySignature(request)) {
+            throw new BadRequestException("Invalid payment signature");
+        }
 
-        int paymentStatus = vnPayService.orderReturn(request);
-        String vnpTxnRef = request.getParameter("vnp_TxnRef");
-        String vnpTransactionNo = request.getParameter("vnp_TransactionNo");
-        String vnpBankCode = request.getParameter("vnp_BankCode");
+        PaymentTransaction transaction = paymentTransactionRepository
+                .findByTransactionId(request.getTransactionId())
+                .orElseThrow(() -> new NotFoundException("Transaction not found: " + request.getTransactionId()));
 
-        com.trainning.movie_booking_system.entity.PaymentTransaction transaction =
-                paymentTransactionRepository.findByTransactionId(vnpTxnRef)
-                        .orElseThrow(() -> new NotFoundException("Transaction not found: " + vnpTxnRef));
+        // Idempotency: nếu transaction đã SUCCESS/FAILED thì không xử lý lại
+        if (transaction.getStatus() == PaymentStatus.SUCCESS) {
+            return buildResponse(transaction.getBooking(), "SUCCESS", "Payment already completed");
+        } else if (transaction.getStatus() == PaymentStatus.FAILED) {
+            return buildResponse(transaction.getBooking(), "FAILED", "Payment already failed");
+        }
 
         Booking booking = transaction.getBooking();
 
-        if (paymentStatus == 1) {
-            transaction.setStatus(com.trainning.movie_booking_system.untils.enums.PaymentStatus.SUCCESS);
-            transaction.setGatewayOrderId(vnpTransactionNo);
-            transaction.setPaymentMethod(vnpBankCode);
-            transaction.setCompletedAt(java.time.LocalDateTime.now());
+        if ("SUCCESS".equalsIgnoreCase(request.getStatus())) {
+            transaction.setStatus(PaymentStatus.SUCCESS);
+            transaction.setGatewayOrderId(request.getGatewayOrderId());
+            transaction.setPaymentMethod(request.getPaymentMethod());
+            transaction.setCompletedAt(LocalDateTime.now());
             paymentTransactionRepository.save(transaction);
 
             booking.setStatus(BookingStatus.CONFIRMED);
@@ -105,17 +115,12 @@ public class PaymentServiceImpl implements PaymentService {
                     .toList();
             seatDomainService.consumeHoldToBooked(booking.getShowtime().getId(), seatIds);
 
-            log.info("[PAYMENT]  Payment SUCCESS for booking {}", booking.getId());
-
-            return PaymentResponse.builder()
-                    .bookingId(booking.getId())
-                    .status("SUCCESS")
-                    .message("Payment completed successfully")
-                    .build();
+            log.info("[PAYMENT] Payment SUCCESS for booking {}", booking.getId());
+            return buildResponse(booking, "SUCCESS", "Payment completed successfully");
 
         } else {
-            transaction.setStatus(com.trainning.movie_booking_system.untils.enums.PaymentStatus.FAILED);
-            transaction.setCompletedAt(java.time.LocalDateTime.now());
+            transaction.setStatus(PaymentStatus.FAILED);
+            transaction.setCompletedAt(LocalDateTime.now());
             paymentTransactionRepository.save(transaction);
 
             booking.setStatus(BookingStatus.CANCELLED);
@@ -126,62 +131,41 @@ public class PaymentServiceImpl implements PaymentService {
                     .toList();
             seatDomainService.releaseHolds(booking.getShowtime().getId(), seatIds);
 
-            log.warn("[PAYMENT]  Payment FAILED for booking {}", booking.getId());
-
-            return PaymentResponse.builder()
-                    .bookingId(booking.getId())
-                    .status("FAILED")
-                    .message("Payment failed or cancelled")
-                    .build();
+            log.warn("[PAYMENT] Payment FAILED for booking {}", booking.getId());
+            return buildResponse(booking, "FAILED", "Payment failed or cancelled");
         }
     }
 
+    /**
+     * Xử lý callback VNPay Return URL
+     */
     @Override
-    @Transactional
-    public PaymentResponse handlePaymentCallback(PaymentRequest request) {
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new NotFoundException("Booking not found: " + request.getBookingId()));
-
-        if ("SUCCESS".equals(request.getStatus())) {
-            booking.setStatus(BookingStatus.CONFIRMED);
-            bookingRepository.save(booking);
-
-            List<Long> seatIds = booking.getBookingSeats().stream()
-                    .map(bs -> bs.getSeat().getId())
-                    .toList();
-            seatDomainService.consumeHoldToBooked(booking.getShowtime().getId(), seatIds);
-
-            return PaymentResponse.builder()
-                    .bookingId(booking.getId())
-                    .status("SUCCESS")
-                    .message("Payment completed successfully")
-                    .build();
-
-        } else {
-            booking.setStatus(BookingStatus.CANCELLED);
-            bookingRepository.save(booking);
-
-            List<Long> seatIds = booking.getBookingSeats().stream()
-                    .map(bs -> bs.getSeat().getId())
-                    .toList();
-            seatDomainService.releaseHolds(booking.getShowtime().getId(), seatIds);
-
-            return PaymentResponse.builder()
-                    .bookingId(booking.getId())
-                    .status("FAILED")
-                    .message("Payment failed or cancelled")
-                    .build();
-        }
+    public PaymentResponse handleVNPayReturn(jakarta.servlet.http.HttpServletRequest request) {
+        PaymentRequest paymentRequest = vnPayService.parseRequest(request);
+        return processPaymentCallback(paymentRequest);
     }
 
+    /**
+     * Xử lý callback cũ / DEPRECATED
+     */
+    @Override
+    public PaymentResponse handlePaymentCallback(PaymentRequest request) {
+        return processPaymentCallback(request);
+    }
+
+    /**
+     * Verify payment status
+     */
     @Override
     public String verifyPaymentStatus(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found: " + bookingId));
-
         return booking.getStatus().name();
     }
 
+    /**
+     * Cancel payment
+     */
     @Override
     @Transactional
     public void cancelPayment(Long bookingId) {
@@ -203,5 +187,40 @@ public class PaymentServiceImpl implements PaymentService {
                 .map(bs -> bs.getSeat().getId())
                 .toList();
         seatDomainService.releaseHolds(booking.getShowtime().getId(), seatIds);
+    }
+
+    /**
+     * Cron job tự động release booking PENDING_PAYMENT quá 15 phút
+     */
+    @Scheduled(fixedRate = 60_000)
+    @Transactional
+    public void releaseExpiredBookings() {
+        LocalDateTime now = LocalDateTime.now();
+        bookingRepository.findAllByStatus(BookingStatus.PENDING_PAYMENT).forEach(booking -> {
+            PaymentTransaction txn = paymentTransactionRepository
+                    .findTopByBookingOrderByInitiatedAtDesc(booking)
+                    .orElse(null);
+
+            if (txn != null && Duration.between(txn.getInitiatedAt(), now).toMinutes() > 15) {
+                booking.setStatus(BookingStatus.EXPIRED);
+                bookingRepository.save(booking);
+
+                List<Long> seatIds = booking.getBookingSeats().stream()
+                        .map(bs -> bs.getSeat().getId())
+                        .toList();
+                seatDomainService.releaseHolds(booking.getShowtime().getId(), seatIds);
+
+                log.info("[PAYMENT] Booking {} expired due to timeout. Seats released.", booking.getId());
+            }
+        });
+    }
+
+    /** Helper build PaymentResponse */
+    private PaymentResponse buildResponse(Booking booking, String status, String message) {
+        return PaymentResponse.builder()
+                .bookingId(booking.getId())
+                .status(status)
+                .message(message)
+                .build();
     }
 }
