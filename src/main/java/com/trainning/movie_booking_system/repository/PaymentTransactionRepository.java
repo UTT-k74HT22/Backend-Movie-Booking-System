@@ -1,5 +1,6 @@
 package com.trainning.movie_booking_system.repository;
 
+import com.trainning.movie_booking_system.entity.Booking;
 import com.trainning.movie_booking_system.entity.PaymentTransaction;
 import com.trainning.movie_booking_system.untils.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,11 +29,15 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      * Find transaction by booking ID and status
      */
     Optional<PaymentTransaction> findByBookingIdAndStatus(Long bookingId, PaymentStatus status);
-
+    /**
+     * Find the most recent transaction for a booking
+     */
+    Optional<PaymentTransaction> findTopByBookingIdOrderByCreatedAtDesc(Long bookingId);
     /**
      * Check if transaction ID already exists (for idempotency)
      */
     boolean existsByTransactionId(String transactionId);
+
 
     /**
      * Find all transactions by status
@@ -58,4 +63,9 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      */
     @Query("SELECT COUNT(pt) FROM PaymentTransaction pt WHERE pt.booking.account.id = :userId AND pt.status = :status")
     long countByUserIdAndStatus(@Param("userId") Long userId, @Param("status") PaymentStatus status);
+    /**
+     * Lấy transaction mới nhất của booking theo initiatedAt
+     */
+    Optional<PaymentTransaction> findTopByBookingOrderByInitiatedAtDesc(Booking booking);
+
 }

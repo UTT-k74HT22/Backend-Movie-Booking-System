@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
+import java.util.Map;
+
 /**
  * Payment Request DTO - Dữ liệu callback từ Payment Gateway
  * 
@@ -113,4 +115,16 @@ public class PaymentRequest {
      * Extra data from gateway (JSON string)
      */
     private String extraData;
+    /**
+     * All raw data from gateway as key-value pairs
+     */
+    private Map<String,String> data;
+    /**
+     * When pare request
+     * */
+    private String gatewayType;
+    /**
+     *
+     * */
+    private String gatewayOrderId;
 }

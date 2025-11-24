@@ -1,5 +1,6 @@
 package com.trainning.movie_booking_system.service;
 
+import com.trainning.movie_booking_system.dto.request.Payment.PaymentRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
@@ -31,4 +32,19 @@ public interface VnPayService {
      * @return 1 = success, 0 = failed, -1 = invalid signature
      */
     int orderReturn(HttpServletRequest request);
+
+
+    /**
+     * Parse HttpServletRequest VNPay callback thành PaymentRequest
+     */
+    PaymentRequest parseRequest(HttpServletRequest request);
+
+    boolean verifyPaymentCallbackSignature(PaymentRequest requestData);
+
+    /**
+     * Verify signature of the PaymentRequest
+     * Param request PaymentRequest object containing callback data
+     * @return true if signature is valid, false otherwise
+     * */
+    boolean verifySignature(PaymentRequest request);
 }
