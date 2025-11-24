@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.repository;
 
 import com.trainning.movie_booking_system.entity.BookingSeat;
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

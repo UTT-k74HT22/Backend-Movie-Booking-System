@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.untils.constraint;
+package com.trainning.movie_booking_system.utils.constraint;
 
 public class MailConstants {
     public static final int CORE_POOL_SIZE = 2;

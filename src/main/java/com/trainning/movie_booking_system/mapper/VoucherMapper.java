@@ -6,7 +6,6 @@ import com.trainning.movie_booking_system.dto.response.Voucher.VoucherResponse;
 import com.trainning.movie_booking_system.dto.response.Voucher.VoucherUsageResponse;
 import com.trainning.movie_booking_system.entity.Voucher;
 import com.trainning.movie_booking_system.entity.VoucherUsage;
-import com.trainning.movie_booking_system.untils.enums.DiscountType;
 import org.mapstruct.*;
 
 import java.util.List;
@@ -21,7 +20,7 @@ public interface VoucherMapper {
     // ------------------------- CREATE -------------------------
     @Mapping(target = "currentUsageCount", constant = "0")
     @Mapping(target = "discountValue",
-            expression = "java(request.getDiscountType() == com.trainning.movie_booking_system.untils.enums.DiscountType.BUY_X_GET_Y ? java.math.BigDecimal.ZERO : request.getDiscountValue())")
+            expression = "java(request.getDiscountType() == com.trainning.movie_booking_system.utils.enums.DiscountType.BUY_X_GET_Y ? java.math.BigDecimal.ZERO : request.getDiscountValue())")
     @Mapping(target = "applicableMovieIds", ignore = true)
     @Mapping(target = "applicableTheaterIds", ignore = true)
     @Mapping(target = "applicableDaysOfWeek", ignore = true)

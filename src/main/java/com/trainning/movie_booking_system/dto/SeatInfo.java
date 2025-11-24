@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto;
 
-import com.trainning.movie_booking_system.untils.enums.SeatType;
+import com.trainning.movie_booking_system.utils.enums.SeatType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

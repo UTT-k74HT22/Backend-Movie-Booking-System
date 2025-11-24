@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.service.MailService;
 import com.trainning.movie_booking_system.service.OtpService;
 import com.trainning.movie_booking_system.service.RedisService;
-import com.trainning.movie_booking_system.untils.enums.OtpType;
+import com.trainning.movie_booking_system.utils.enums.OtpType;
 import com.trainning.movie_booking_system.entity.Account;
 import com.trainning.movie_booking_system.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;

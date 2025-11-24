@@ -5,7 +5,7 @@ import com.trainning.movie_booking_system.dto.request.Theater.UpdateTheaterReque
 import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.dto.response.Theater.TheaterResponse;
-import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
+import com.trainning.movie_booking_system.utils.enums.TheaterStatus;
 
 import java.time.LocalDate;
 import java.util.List;

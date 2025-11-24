@@ -11,8 +11,8 @@ import com.trainning.movie_booking_system.repository.BookingRepository;
 import com.trainning.movie_booking_system.repository.PaymentTransactionRepository;
 import com.trainning.movie_booking_system.service.PaymentService;
 import com.trainning.movie_booking_system.service.VnPayService;
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
-import com.trainning.movie_booking_system.untils.enums.PaymentStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.PaymentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -56,7 +56,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentTransaction transaction = PaymentTransaction.builder()
                 .booking(booking)
-                .gatewayType(com.trainning.movie_booking_system.untils.enums.PaymentGatewayType.VNPAY)
+                .gatewayType(com.trainning.movie_booking_system.utils.enums.PaymentGatewayType.VNPAY)
                 .transactionId(txnRef)
                 .amount(booking.getTotalPrice())
                 .discountAmount(booking.getDiscountAmount())

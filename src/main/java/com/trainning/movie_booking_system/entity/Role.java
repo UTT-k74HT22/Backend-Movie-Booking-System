@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.RoleType;
+import com.trainning.movie_booking_system.utils.enums.RoleType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

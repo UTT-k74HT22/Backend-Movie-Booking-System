@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.security;
 
 import com.trainning.movie_booking_system.entity.Account;
-import com.trainning.movie_booking_system.untils.enums.UserStatus;
+import com.trainning.movie_booking_system.utils.enums.UserStatus;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

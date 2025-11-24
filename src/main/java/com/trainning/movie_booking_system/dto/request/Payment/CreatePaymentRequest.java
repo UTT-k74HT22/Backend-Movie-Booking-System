@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto.request.Payment;
 
-import com.trainning.movie_booking_system.untils.enums.PaymentGatewayType;
+import com.trainning.movie_booking_system.utils.enums.PaymentGatewayType;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

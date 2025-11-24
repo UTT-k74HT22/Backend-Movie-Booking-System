@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto.request.Movie;
 
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 import lombok.Data;
 import org.springframework.data.domain.Sort;
 import java.math.BigDecimal;

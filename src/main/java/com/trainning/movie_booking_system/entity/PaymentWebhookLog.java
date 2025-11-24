@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.PaymentGatewayType;
+import com.trainning.movie_booking_system.utils.enums.PaymentGatewayType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;

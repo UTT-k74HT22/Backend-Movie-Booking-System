@@ -1,4 +1,4 @@
-package com.trainning.movie_booking_system.untils.enums;
+package com.trainning.movie_booking_system.utils.enums;
 
 import lombok.Getter;
 import java.util.Arrays;

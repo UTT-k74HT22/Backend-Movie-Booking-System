@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.SeatStatus;
-import com.trainning.movie_booking_system.untils.enums.SeatType;
+import com.trainning.movie_booking_system.utils.enums.SeatStatus;
+import com.trainning.movie_booking_system.utils.enums.SeatType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;

@@ -5,7 +5,7 @@ import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeReq
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeByScreenResponse;
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
-import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+import com.trainning.movie_booking_system.utils.enums.ShowtimeStatus;
 
 import java.time.LocalDate;
 import java.util.List;

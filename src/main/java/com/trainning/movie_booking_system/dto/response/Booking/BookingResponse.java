@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto.response.Booking;
 
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;

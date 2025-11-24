@@ -3,7 +3,7 @@ package com.trainning.movie_booking_system.helper.cron;
 import com.trainning.movie_booking_system.entity.Booking;
 import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
 import com.trainning.movie_booking_system.repository.BookingRepository;
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

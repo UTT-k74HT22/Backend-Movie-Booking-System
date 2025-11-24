@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Movie.MovieRequest;
 import com.trainning.movie_booking_system.dto.request.Movie.UpdateMovieRequest;
 import com.trainning.movie_booking_system.dto.response.Movie.MovieResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 
 public interface MovieService {
 
