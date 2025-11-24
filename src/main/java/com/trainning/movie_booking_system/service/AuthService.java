@@ -35,8 +35,13 @@ public interface AuthService {
     AuthResponse refreshToken(String refreshToken);
 
     /**
+<<<<<<< HEAD
      * Logout: invalidate refresh token
      * @param refreshToken refresh token
+=======
+     * Logout: invalidate the refresh token
+     * @param refreshToken refresh token to be invalidated
+>>>>>>> 27efa744756701f56c10ae702c2fe328749d193d
      */
     void logout(String refreshToken);
 

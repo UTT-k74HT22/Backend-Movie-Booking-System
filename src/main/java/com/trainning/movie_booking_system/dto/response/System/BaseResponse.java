@@ -48,4 +48,5 @@ public class BaseResponse<T> {
                 .timestamp(LocalDateTime.now())
                 .build();
     }
+
 }
