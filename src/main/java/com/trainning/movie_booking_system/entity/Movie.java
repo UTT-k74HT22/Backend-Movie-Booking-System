@@ -6,6 +6,9 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -37,6 +40,19 @@ public class Movie extends BaseEntity {
     @Column(name = "release_date")
     private LocalDate releaseDate;
 
+    @Column(name = "screening_start_date")
+    private LocalDate screeningStartDate;
+
+    @Column(name = "screening_end_date")
+    private LocalDate screeningEndDate;
+
+    @Column(name = "allowed_start_time")
+    private LocalTime allowedStartTime;
+
+    @Column(name = "allowed_end_time")
+    private LocalTime allowedEndTime;
+
+
     @Column(name = "poster_url", columnDefinition = "TEXT")
     private String posterUrl;
 
@@ -51,6 +67,9 @@ public class Movie extends BaseEntity {
 
     @Column(length = 50)
     private String language;
+
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MovieAllowedTime> allowedTimes = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

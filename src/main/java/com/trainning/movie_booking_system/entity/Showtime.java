@@ -50,6 +50,10 @@ public class Showtime extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    //Để trong DB lưu chính xác thời điểm kết thúc thực tế (duration + thời gian dọn phòng).
+    @Column(name = "actual_end_time")
+    private LocalTime actualEndTime;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private ShowtimeStatus status;

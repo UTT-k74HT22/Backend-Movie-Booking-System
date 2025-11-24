@@ -13,6 +13,12 @@ public class MovieResponse implements Serializable {
     private String description;
     private Integer duration;
     private String releaseDate;
+
+    private String screeningStartDate;
+    private String screeningEndDate;
+    private String allowedStartTime;
+    private String allowedEndTime;
+
     private String posterUrl;
     private String trailerUrl;
     private Double rating;

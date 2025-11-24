@@ -20,6 +20,11 @@ public class MovieRequest {
 
     private String releaseDate; // ISO format (yyyy-MM-dd)
 
+    private String screeningStartDate; // yyyy-MM-dd
+    private String screeningEndDate;   // yyyy-MM-dd
+    private String allowedStartTime;   // HH:mm
+    private String allowedEndTime;     // HH:mm
+
     private String posterUrl;
     private String trailerUrl;
 

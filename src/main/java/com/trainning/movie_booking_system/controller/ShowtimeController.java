@@ -36,7 +36,30 @@ public class ShowtimeController {
         log.info("[SHOWTIME-CONTROLLER] Create showtime request: {}", request);
         return ResponseEntity.ok(BaseResponse.success(showtimeService.create(request)));
     }
+    /**
+     * Auto-generate showtimes for a movie on a specific screen and date
+     *
+     * @param movieId       the movie id
+     * @param screenId      the screen id
+     * @param date          the date to generate showtimes
+     * @param bufferMinutes buffer time between showtimes (optional, default 15 min)
+     * @return success message
+     */
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
+    @PostMapping("/auto-generate")
+    public ResponseEntity<?> autoGenerateShowtimes(
+            @RequestParam Long movieId,
+            @RequestParam Long screenId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "15") int bufferMinutes) {
 
+        log.info("[SHOWTIME-CONTROLLER] Auto-generate showtimes for movieId={}, screenId={}, date={}, buffer={}",
+                movieId, screenId, date, bufferMinutes);
+
+        showtimeService.autoGenerateShowtimes(movieId, screenId, date, bufferMinutes);
+
+        return ResponseEntity.ok(BaseResponse.success("Showtimes auto-generated successfully"));
+    }
     /**
      * Update an existing showtime
      *

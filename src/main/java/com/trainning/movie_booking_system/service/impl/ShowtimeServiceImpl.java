@@ -6,15 +6,18 @@ import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeByScreen
 import com.trainning.movie_booking_system.dto.response.Showtime.ShowtimeResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
 import com.trainning.movie_booking_system.entity.Movie;
+import com.trainning.movie_booking_system.entity.MovieAllowedTime;
 import com.trainning.movie_booking_system.entity.Screen;
 import com.trainning.movie_booking_system.entity.Showtime;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.mapper.ShowtimeMapper;
+import com.trainning.movie_booking_system.repository.MovieAllowedTimeRepository;
 import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 import com.trainning.movie_booking_system.utils.enums.ShowtimeStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +26,10 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +40,7 @@ import static com.trainning.movie_booking_system.mapper.ShowtimeMapper.toShowtim
 @Slf4j
 @RequiredArgsConstructor
 public class ShowtimeServiceImpl implements ShowtimeService {
+    private final MovieAllowedTimeRepository movieAllowedTimeRepository;
 
     private final ShowtimeRepository showtimeRepository;
     private final ScreenRepository screenRepository;
@@ -237,6 +244,67 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         log.info("[SHOWTIME SERVICE]: Counting total showtimes");
         return showtimeRepository.count();
     }
+    @Transactional
+    @Override
+    public void autoGenerateShowtimes(Long movieId, Long screenId, LocalDate date, int bufferMinutes) {
+        // Lấy movie
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
+
+        // Kiểm tra trạng thái movie
+        if (movie.getStatus() != MovieStatus.COMING_SOON && movie.getStatus() != MovieStatus.NOW_SHOWING) {
+            throw new BadRequestException("Movie must be COMING_SOON or NOW_SHOWING to create showtimes");
+        }
+
+        // Kiểm tra ngày chiếu
+        if (date.isBefore(movie.getScreeningStartDate()) || date.isAfter(movie.getScreeningEndDate())) {
+            throw new BadRequestException("Cannot generate showtimes outside of movie screening dates");
+        }
+
+        // Lấy screen
+        Screen screen = screenRepository.findById(screenId)
+                .orElseThrow(() -> new NotFoundException("Screen not found with ID: " + screenId));
+
+        // Giờ allowed từ movie
+        LocalTime slotStart = movie.getAllowedStartTime();
+        LocalTime slotEnd = movie.getAllowedEndTime();
+
+        // Lấy tất cả showtime đã có của screen + ngày
+        List<Showtime> existingShowtimes = showtimeRepository.findShowtimesByTheaterAndMovieAndDate(
+                screen.getTheater().getId(), movieId, date
+        );
+
+        LocalTime currentTime = slotStart;
+
+        while (currentTime.plusMinutes(movie.getDuration() + bufferMinutes).isBefore(slotEnd) ||
+                currentTime.plusMinutes(movie.getDuration() + bufferMinutes).equals(slotEnd)) {
+
+            LocalTime start = currentTime; // effectively final
+            LocalTime end = currentTime.plusMinutes(movie.getDuration());
+
+            // Kiểm tra trùng suất
+            boolean conflict = existingShowtimes.stream()
+                    .anyMatch(s -> !(end.isBefore(s.getStartTime()) || start.isAfter(s.getEndTime())));
+
+            if (!conflict) {
+                Showtime showtime = Showtime.builder()
+                        .movie(movie)
+                        .screen(screen)
+                        .showDate(date)
+                        .startTime(start)
+                        .endTime(end)
+                        .price(BigDecimal.valueOf(100)) // có thể set từ request nếu muốn
+                        .status(ShowtimeStatus.ACTIVE)
+                        .build();
+                showtimeRepository.save(showtime);
+                existingShowtimes.add(showtime);
+            }
+
+            // Chuyển sang suất tiếp theo
+            currentTime = currentTime.plusMinutes(movie.getDuration() + bufferMinutes);
+        }
+    }
+
 
     //====================== PRIVATE METHOD ====================//
     private Showtime getShowtime(Long id) {
