@@ -176,7 +176,7 @@ Thêm method với `@Lock`:
 package com.trainning.movie_booking_system.repository;
 
 import com.trainning.movie_booking_system.entity.PaymentTransaction;
-import com.trainning.movie_booking_system.untils.enums.PaymentStatus;
+import com.trainning.movie_booking_system.utils.enums.PaymentStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -191,21 +191,21 @@ import java.util.Optional;
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, Long> {
 
     Optional<PaymentTransaction> findByTransactionId(String transactionId);
-    
+
     // ✅ NEW: Pessimistic lock for idempotency
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT pt FROM PaymentTransaction pt WHERE pt.transactionId = :txnId")
     Optional<PaymentTransaction> findByTransactionIdForUpdate(@Param("txnId") String txnId);
 
     List<PaymentTransaction> findByBookingId(Long bookingId);
-    
+
     // ✅ NEW: Find by booking and status
     @Query("SELECT pt FROM PaymentTransaction pt WHERE pt.booking.id = :bookingId AND pt.status = :status")
     List<PaymentTransaction> findByBookingIdAndStatus(
-        @Param("bookingId") Long bookingId, 
-        @Param("status") PaymentStatus status
+            @Param("bookingId") Long bookingId,
+            @Param("status") PaymentStatus status
     );
-    
+
     boolean existsByTransactionId(String transactionId);
 }
 ```
@@ -494,7 +494,7 @@ public class Booking extends BaseEntity {
 package com.trainning.movie_booking_system.repository;
 
 import com.trainning.movie_booking_system.entity.Booking;
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -505,14 +505,14 @@ import java.util.List;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-    
+
     // ✅ NEW: Find expired bookings for cron job
     @Query("SELECT b FROM Booking b WHERE b.status = :status AND b.expiresAt < :expirationTime")
     List<Booking> findByStatusAndExpiresAtBefore(
-        @Param("status") BookingStatus status,
-        @Param("expirationTime") LocalDateTime expirationTime
+            @Param("status") BookingStatus status,
+            @Param("expirationTime") LocalDateTime expirationTime
     );
-    
+
     // Existing methods...
 }
 ```
@@ -529,8 +529,8 @@ import com.trainning.movie_booking_system.entity.PaymentTransaction;
 import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
 import com.trainning.movie_booking_system.repository.BookingRepository;
 import com.trainning.movie_booking_system.repository.PaymentTransactionRepository;
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
-import com.trainning.movie_booking_system.untils.enums.PaymentStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.PaymentStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -548,11 +548,11 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class BookingExpirationService {
-    
+
     private final BookingRepository bookingRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final SeatDomainService seatDomainService;
-    
+
     /**
      * Expire bookings that are PENDING_PAYMENT and past expiration time
      * Runs every 5 minutes
@@ -561,23 +561,23 @@ public class BookingExpirationService {
     @Transactional
     public void expireBookings() {
         log.info("[EXPIRATION] Starting expiration job");
-        
+
         LocalDateTime now = LocalDateTime.now();
-        
+
         // Find expired bookings
         List<Booking> expiredBookings = bookingRepository
-            .findByStatusAndExpiresAtBefore(BookingStatus.PENDING_PAYMENT, now);
-        
+                .findByStatusAndExpiresAtBefore(BookingStatus.PENDING_PAYMENT, now);
+
         if (expiredBookings.isEmpty()) {
             log.info("[EXPIRATION] No expired bookings found");
             return;
         }
-        
+
         log.info("[EXPIRATION] Found {} expired bookings", expiredBookings.size());
-        
+
         int successCount = 0;
         int failCount = 0;
-        
+
         for (Booking booking : expiredBookings) {
             try {
                 expireBooking(booking);
@@ -587,49 +587,49 @@ public class BookingExpirationService {
                 failCount++;
             }
         }
-        
-        log.info("[EXPIRATION] Expiration job completed. Success: {}, Failed: {}", 
-            successCount, failCount);
+
+        log.info("[EXPIRATION] Expiration job completed. Success: {}, Failed: {}",
+                successCount, failCount);
     }
-    
+
     /**
      * Expire a single booking
      */
     private void expireBooking(Booking booking) {
         log.info("[EXPIRATION] Expiring booking {} (created: {}, expired: {})",
-            booking.getId(), booking.getBookingDate(), booking.getExpiresAt());
-        
+                booking.getId(), booking.getBookingDate(), booking.getExpiresAt());
+
         // Update booking status
         booking.setStatus(BookingStatus.EXPIRED);
         bookingRepository.save(booking);
-        
+
         // Cancel pending payment transactions
         List<PaymentTransaction> pendingTxns = paymentTransactionRepository
-            .findByBookingIdAndStatus(booking.getId(), PaymentStatus.PENDING);
-        
+                .findByBookingIdAndStatus(booking.getId(), PaymentStatus.PENDING);
+
         for (PaymentTransaction txn : pendingTxns) {
             txn.setStatus(PaymentStatus.EXPIRED);
             txn.setCompletedAt(LocalDateTime.now());
             paymentTransactionRepository.save(txn);
             log.debug("[EXPIRATION] Cancelled transaction {}", txn.getTransactionId());
         }
-        
+
         // Release seats (cleanup Redis holds if any)
         List<Long> seatIds = booking.getBookingSeats().stream()
-            .map(bs -> bs.getSeat().getId())
-            .toList();
-        
+                .map(bs -> bs.getSeat().getId())
+                .toList();
+
         try {
             seatDomainService.releaseHolds(booking.getShowtime().getId(), seatIds);
             log.debug("[EXPIRATION] Released holds for {} seats", seatIds.size());
         } catch (Exception e) {
-            log.warn("[EXPIRATION] Failed to release holds for booking {} (may already released)", 
-                booking.getId());
+            log.warn("[EXPIRATION] Failed to release holds for booking {} (may already released)",
+                    booking.getId());
         }
-        
+
         // TODO: Send notification email
         // emailService.sendBookingExpiredNotification(booking);
-        
+
         log.info("[EXPIRATION] ✅ Booking {} expired successfully", booking.getId());
     }
 }

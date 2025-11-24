@@ -151,7 +151,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
@@ -210,7 +209,7 @@ public class VoucherServiceImpl implements IVoucherService {
         if (userUsageCount >= voucher.getUsagePerUser()) {
             return VoucherValidationResult.invalid(
                     "Bạn đã sử dụng hết lượt cho voucher này (tối đa " +
-                    voucher.getUsagePerUser() + " lần)"
+                            voucher.getUsagePerUser() + " lần)"
             );
         }
 
@@ -218,7 +217,7 @@ public class VoucherServiceImpl implements IVoucherService {
         if (bookingAmount.compareTo(voucher.getMinOrderAmount()) < 0) {
             return VoucherValidationResult.invalid(
                     "Giá trị đơn hàng tối thiểu: " +
-                    voucher.getMinOrderAmount().setScale(0, RoundingMode.HALF_UP) + " VND"
+                            voucher.getMinOrderAmount().setScale(0, RoundingMode.HALF_UP) + " VND"
             );
         }
 
@@ -291,7 +290,7 @@ public class VoucherServiceImpl implements IVoucherService {
 
                 // Apply max discount cap
                 if (voucher.getMaxDiscountAmount() != null &&
-                    discount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
+                        discount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
                     discount = voucher.getMaxDiscountAmount();
                 }
                 break;

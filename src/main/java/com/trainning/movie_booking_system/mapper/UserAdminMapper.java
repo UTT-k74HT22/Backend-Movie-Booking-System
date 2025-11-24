@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.response.Admin.UserAdminResponse;
 import com.trainning.movie_booking_system.entity.Account;
 import com.trainning.movie_booking_system.entity.AccountHasRole;
 import com.trainning.movie_booking_system.entity.User;
-import com.trainning.movie_booking_system.untils.enums.RoleType;
+import com.trainning.movie_booking_system.utils.enums.RoleType;
 
 public class UserAdminMapper {
 

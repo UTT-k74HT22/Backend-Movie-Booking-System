@@ -8,7 +8,7 @@ import com.trainning.movie_booking_system.helper.specification.MovieSpecs;
 import com.trainning.movie_booking_system.mapper.MovieMapper;
 import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.service.Movie.MovieSearchService;
-import com.trainning.movie_booking_system.untils.enums.MovieSortField;
+import com.trainning.movie_booking_system.utils.enums.MovieSortField;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto.request.Screen;
 
-import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
+import com.trainning.movie_booking_system.utils.enums.ScreenStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

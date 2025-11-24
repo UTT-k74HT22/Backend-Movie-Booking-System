@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;

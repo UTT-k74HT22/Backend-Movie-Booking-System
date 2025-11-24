@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.PaymentGatewayType;
-import com.trainning.movie_booking_system.untils.enums.PaymentStatus;
+import com.trainning.movie_booking_system.utils.enums.PaymentGatewayType;
+import com.trainning.movie_booking_system.utils.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;

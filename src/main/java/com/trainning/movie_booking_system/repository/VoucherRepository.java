@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.repository;
 
 import com.trainning.movie_booking_system.entity.Voucher;
-import com.trainning.movie_booking_system.untils.enums.VoucherStatus;
+import com.trainning.movie_booking_system.utils.enums.VoucherStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

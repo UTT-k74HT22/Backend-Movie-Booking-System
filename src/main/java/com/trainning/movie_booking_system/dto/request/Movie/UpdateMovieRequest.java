@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto.request.Movie;
 
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;

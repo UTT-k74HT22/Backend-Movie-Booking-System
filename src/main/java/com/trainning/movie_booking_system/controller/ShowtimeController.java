@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Showtime.ShowtimeRequest;
 import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.ShowtimeService;
-import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+import com.trainning.movie_booking_system.utils.enums.ShowtimeStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

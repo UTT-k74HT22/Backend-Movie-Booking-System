@@ -15,7 +15,7 @@ import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
-import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+import com.trainning.movie_booking_system.utils.enums.ShowtimeStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

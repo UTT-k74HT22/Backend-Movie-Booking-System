@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
+import com.trainning.movie_booking_system.utils.enums.TheaterStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.dto.response.Voucher;
 
-import com.trainning.movie_booking_system.untils.enums.DiscountType;
-import com.trainning.movie_booking_system.untils.enums.VoucherStatus;
+import com.trainning.movie_booking_system.utils.enums.DiscountType;
+import com.trainning.movie_booking_system.utils.enums.VoucherStatus;
 import lombok.*;
 
 import java.math.BigDecimal;

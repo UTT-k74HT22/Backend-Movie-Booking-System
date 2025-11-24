@@ -11,7 +11,7 @@ import com.trainning.movie_booking_system.mapper.ScreenMapper;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.TheaterRepository;
 import com.trainning.movie_booking_system.service.ScreenService;
-import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
+import com.trainning.movie_booking_system.utils.enums.ScreenStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

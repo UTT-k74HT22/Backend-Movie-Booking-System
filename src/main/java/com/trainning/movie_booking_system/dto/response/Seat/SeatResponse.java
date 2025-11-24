@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.dto.response.Seat;
 
-import com.trainning.movie_booking_system.untils.enums.SeatStatus;
-import com.trainning.movie_booking_system.untils.enums.SeatType;
+import com.trainning.movie_booking_system.utils.enums.SeatStatus;
+import com.trainning.movie_booking_system.utils.enums.SeatType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -14,7 +14,7 @@ import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 import org.thymeleaf.templateresolver.ITemplateResolver;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import static com.trainning.movie_booking_system.untils.constraint.MailConstants.*;
+import static com.trainning.movie_booking_system.utils.constraint.MailConstants.*;
 
 @Configuration
 @EnableAsync

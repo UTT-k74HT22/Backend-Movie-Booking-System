@@ -7,7 +7,7 @@ import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.service.Movie.MovieSearchService;
 import com.trainning.movie_booking_system.service.Movie.MovieService;
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

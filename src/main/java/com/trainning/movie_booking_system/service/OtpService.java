@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.service;
 
-import com.trainning.movie_booking_system.untils.enums.OtpType;
+import com.trainning.movie_booking_system.utils.enums.OtpType;
 
 public interface OtpService {
 
