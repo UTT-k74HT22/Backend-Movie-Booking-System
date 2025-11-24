@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -14,9 +14,7 @@ import java.util.List;
         indexes = {
                 @Index(name = "idx_booking_account", columnList = "account_id"),
                 @Index(name = "idx_booking_showtime", columnList = "showtime_id"),
-//                @Index(name = "idx_booking_voucher", columnList = "voucher_id"),
-                @Index(name = "idx_booking_status", columnList = "status"),
-                @Index(name = "idx_booking_expires", columnList = "status, expires_at")
+                @Index(name = "idx_booking_status", columnList = "status")
         }
 )
 @Getter
@@ -34,12 +32,18 @@ public class Booking extends BaseEntity {
     @JoinColumn(name = "showtime_id", nullable = false)
     private Showtime showtime;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "voucher_id")
-//    private Voucher voucher;
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    private Voucher voucher;
+    // Tổng tiền trước khi áp dụng voucher và giảm giá
     @Column(name = "total_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalPrice;
+    // Số tiền được giảm từ voucher
+    @Column(name = "discount_amount", precision = 12, scale = 2)
+    private BigDecimal discountAmount;
+    // Số tiền cuối cùng sau khi áp dụng voucher và các khoản giảm giá khác
+    @Column(name = "final_amount", precision = 12, scale = 2)
+    private BigDecimal finalAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -48,12 +52,8 @@ public class Booking extends BaseEntity {
     @Column(name = "booking_date", nullable = false)
     private LocalDateTime bookingDate;
 
-    /**
-     * Expiration time for PENDING_PAYMENT bookings.
-     * After this time, cron job will automatically set status to EXPIRED.
-     * Set to booking_date + 15 minutes when booking is created.
-     */
-    @Column(name = "expires_at")  // Nullable để migrate data cũ
+    // thời hạn booking pending payment
+    @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -63,5 +63,8 @@ public class Booking extends BaseEntity {
     @PrePersist
     protected void onCreate() {
         bookingDate = LocalDateTime.now();
+        if (status == null) {
+            status = BookingStatus.PENDING_PAYMENT;
+        }
     }
 }

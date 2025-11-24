@@ -3,7 +3,7 @@ package com.trainning.movie_booking_system.service;
 import com.trainning.movie_booking_system.dto.request.Seat.SeatRequest;
 import com.trainning.movie_booking_system.dto.request.Seat.SeatGenerationRequest;
 import com.trainning.movie_booking_system.dto.response.Seat.SeatResponse;
-import com.trainning.movie_booking_system.untils.enums.SeatStatus;
+import com.trainning.movie_booking_system.utils.enums.SeatStatus;
 import org.springframework.data.domain.Page;
 
 import java.util.List;

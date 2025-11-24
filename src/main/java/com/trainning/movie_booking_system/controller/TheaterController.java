@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Theater.TheaterRequest;
 import com.trainning.movie_booking_system.dto.request.Theater.UpdateTheaterRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.TheaterService;
-import com.trainning.movie_booking_system.untils.enums.TheaterStatus;
+import com.trainning.movie_booking_system.utils.enums.TheaterStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/api/theaters")
+@RequestMapping("/api/v1/theaters")
 @RequiredArgsConstructor
 @Validated
 @Slf4j

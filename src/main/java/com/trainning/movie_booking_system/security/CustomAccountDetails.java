@@ -1,6 +1,7 @@
 package com.trainning.movie_booking_system.security;
 
 import com.trainning.movie_booking_system.entity.Account;
+import com.trainning.movie_booking_system.utils.enums.UserStatus;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -51,9 +52,9 @@ public class CustomAccountDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return account.getStatus() != null &&
-                !account.getStatus().toString().equals("LOCKED");
+        return account.getStatus() != null && account.getStatus() != UserStatus.LOCKED;
     }
+
 
     @Override
     public boolean isCredentialsNonExpired() {
@@ -62,10 +63,9 @@ public class CustomAccountDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return account.getStatus() != null &&
-                account.getStatus().toString().equals("ACTIVE");
+        // Chỉ ACTIVE và email đã verify mới là enabled
+        return account.getStatus() == UserStatus.ACTIVE && account.isEmailVerified();
     }
-
     /**
      * Getter để truy cập Account entity nếu cần
      */

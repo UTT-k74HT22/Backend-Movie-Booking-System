@@ -10,7 +10,7 @@ import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.mapper.MovieMapper;
 import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.service.Movie.MovieService;
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

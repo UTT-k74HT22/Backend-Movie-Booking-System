@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Screen.ScreenRequest;
 import com.trainning.movie_booking_system.dto.request.Screen.UpdateScreenRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.ScreenService;
-import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
+import com.trainning.movie_booking_system.utils.enums.ScreenStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/screens")
+@RequestMapping("/api/v1/screens")
 @RequiredArgsConstructor
 @Validated
 @Slf4j

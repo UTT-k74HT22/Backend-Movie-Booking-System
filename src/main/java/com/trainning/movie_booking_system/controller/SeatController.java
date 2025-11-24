@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Seat.SeatRequest;
 import com.trainning.movie_booking_system.dto.request.Seat.SeatGenerationRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.SeatService;
-import com.trainning.movie_booking_system.untils.enums.SeatStatus;
+import com.trainning.movie_booking_system.utils.enums.SeatStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/seats")
+@RequestMapping("/api/v1/seats")
 @RequiredArgsConstructor
 @Validated
 @Slf4j

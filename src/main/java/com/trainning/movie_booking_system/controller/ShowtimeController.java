@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Showtime.ShowtimeRequest;
 import com.trainning.movie_booking_system.dto.request.Showtime.UpdateShowtimeRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.ShowtimeService;
-import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+import com.trainning.movie_booking_system.utils.enums.ShowtimeStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/api/showtimes")
+@RequestMapping("/api/v1/showtimes")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
@@ -67,6 +67,7 @@ public class ShowtimeController {
 
     /**
      * Get a showtime by id
+     * PUBLIC - No authentication required
      *
      * @param showtimeId showtime id
      * @return showtime response object
@@ -78,35 +79,46 @@ public class ShowtimeController {
     }
 
     /**
-     * Get all showtimes with pagination
+     * Get all showtimes with pagination and optional filters
+     * PUBLIC - No authentication required
+     * 
+     * Query params:
+     * - theaterId, movieId, date: Filter showtimes
+     * - pageNumber, pageSize: Pagination
      *
+     * Examples:
+     * - GET /api/v1/showtimes?theaterId=1&movieId=2&date=2025-11-11
+     * - GET /api/v1/showtimes?pageNumber=0&pageSize=20
+     *
+     * @param theaterId theater id (optional)
+     * @param movieId movie id (optional)
+     * @param date date to filter showtimes (optional)
      * @param pageNumber page number
-     * @param pageSize   page size
-     * @return paginated showtime response
+     * @param pageSize page size
+     * @return paginated showtime response or filtered list
      */
     @GetMapping
-    public ResponseEntity<?> getAlls(@RequestParam(defaultValue = "0") int pageNumber,
-                                     @RequestParam(defaultValue = "10") int pageSize) {
-        log.info("[SHOWTIME-CONTROLLER] Get all showtimes request: pageNumber={}, pageSize={}", pageNumber, pageSize);
-        return ResponseEntity.ok(BaseResponse.success(showtimeService.getAll(pageNumber, pageSize)));
-    }
-
-    /**
-     * Get showtimes by theater and movie on a specific date
-     *
-     * @param theaterId theater id
-     * @param movieId   movie id
-     * @param date      date to filter showtimes
-     * @return list of showtimes grouped by screen
-     */
-    @GetMapping("/by-theater-and-movie")
     public ResponseEntity<?> getShowtimes(
-            @RequestParam Long theaterId,
-            @RequestParam Long movieId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam(required = false) Long theaterId,
+            @RequestParam(required = false) Long movieId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "0") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize) {
 
-        log.info("[SHOWTIME CONTROLLER] theaterId={}, movieId={}, date={}", theaterId, movieId, date);
-        return ResponseEntity.ok(BaseResponse.success(showtimeService.findByTheaterAndMovie(theaterId, movieId, date)));
+        log.info("[SHOWTIME CONTROLLER] Filter: theaterId={}, movieId={}, date={}, page={}, size={}", 
+                 theaterId, movieId, date, pageNumber, pageSize);
+        
+        // If specific filter requested, use filter method
+        if (theaterId != null && movieId != null && date != null) {
+            return ResponseEntity.ok(BaseResponse.success(
+                    showtimeService.findByTheaterAndMovie(theaterId, movieId, date)
+            ));
+        }
+        
+        // Otherwise return paginated list
+        return ResponseEntity.ok(BaseResponse.success(
+                showtimeService.getAll(pageNumber, pageSize)
+        ));
     }
 
 

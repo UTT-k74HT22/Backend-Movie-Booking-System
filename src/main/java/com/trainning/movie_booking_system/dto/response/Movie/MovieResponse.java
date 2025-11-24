@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.dto.response.Movie;
 
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
+import com.trainning.movie_booking_system.utils.enums.MovieStatus;
 import lombok.Builder;
 import lombok.Getter;
 import java.io.Serializable;

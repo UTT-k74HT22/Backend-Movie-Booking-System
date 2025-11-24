@@ -17,7 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
@@ -25,7 +25,7 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * User sử dụng đăng kí tài khooản mới
+     * User sử dụng đăng kí tài khoản mới
      * @param request thông tin cá nhân
      * @return message
      */
@@ -79,6 +79,7 @@ public class AuthController {
         log.info("[AUTH] API refresh");
         return ResponseEntity.ok(BaseResponse.success(authService.refreshToken(request.getRefreshToken())));
     }
+
     /**
      * Logout
      * @param request refresh token

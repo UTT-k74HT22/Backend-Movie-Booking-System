@@ -4,7 +4,7 @@ import com.trainning.movie_booking_system.dto.request.Screen.ScreenRequest;
 import com.trainning.movie_booking_system.dto.request.Screen.UpdateScreenRequest;
 import com.trainning.movie_booking_system.dto.response.Screen.ScreenResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
-import com.trainning.movie_booking_system.untils.enums.ScreenStatus;
+import com.trainning.movie_booking_system.utils.enums.ScreenStatus;
 
 import java.util.List;
 

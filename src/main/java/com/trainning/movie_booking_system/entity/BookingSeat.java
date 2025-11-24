@@ -40,5 +40,5 @@ public class BookingSeat extends BaseEntity {
     
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_type", nullable = false, length = 20)
-    private com.trainning.movie_booking_system.untils.enums.SeatType seatType;
+    private com.trainning.movie_booking_system.utils.enums.SeatType seatType;
 }

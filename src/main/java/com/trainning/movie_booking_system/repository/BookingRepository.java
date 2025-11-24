@@ -1,7 +1,7 @@
 package com.trainning.movie_booking_system.repository;
 
 import com.trainning.movie_booking_system.entity.Booking;
-import com.trainning.movie_booking_system.untils.enums.BookingStatus;
+import com.trainning.movie_booking_system.utils.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,4 +32,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         where b.id = :id
     """)
     Optional<Booking> findByIdWithSeats(@Param("id") Long id);
+
+    /**
+     * Find all bookings by their status.
+     * @param status the booking status to filter by
+     *               @return a list of bookings with the specified status
+     * */
+    List<Booking> findAllByStatus(BookingStatus status);
 }

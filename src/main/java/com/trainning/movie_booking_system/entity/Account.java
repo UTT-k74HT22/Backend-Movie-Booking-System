@@ -1,6 +1,6 @@
 package com.trainning.movie_booking_system.entity;
 
-import com.trainning.movie_booking_system.untils.enums.UserStatus;
+import com.trainning.movie_booking_system.utils.enums.UserStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +17,7 @@ import java.util.Set;
         }
 )
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

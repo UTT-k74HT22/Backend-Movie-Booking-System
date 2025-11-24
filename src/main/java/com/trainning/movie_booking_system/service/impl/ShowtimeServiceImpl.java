@@ -15,8 +15,7 @@ import com.trainning.movie_booking_system.repository.MovieRepository;
 import com.trainning.movie_booking_system.repository.ScreenRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.service.ShowtimeService;
-import com.trainning.movie_booking_system.untils.enums.MovieStatus;
-import com.trainning.movie_booking_system.untils.enums.ShowtimeStatus;
+import com.trainning.movie_booking_system.utils.enums.ShowtimeStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,14 +62,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                     return new BadRequestException("Movie not found");
                 });
 
-        // Kiểm tra trạng thái của movie
-        if (!(movie.getStatus() == MovieStatus.COMING_SOON || movie.getStatus() == MovieStatus.NOW_SHOWING)) {
-            log.warn("[SHOWTIME SERVICE]: Cannot create showtime for movie ID {} with status {}", movie.getId(), movie.getStatus());
-            throw new BadRequestException("Cannot create showtime: Movie must be COMING_SOON or NOW_SHOWING");
-        }
-
         if (showtimeRepository.existsByScreenIdAndShowDateAndStartTime(request.getScreenId(),
                 request.getShowDate(), request.getStartTime())) {
+
             log.error("[SHOWTIME SERVICE]: Showtime already exists for screen ID {}, date {}, and start time {}",
                     request.getScreenId(), request.getShowDate(), request.getStartTime());
             throw new BadRequestException("Showtime already exists for the given screen, date, and time");
@@ -90,7 +84,6 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         return toShowtimeResponse(showtime);
     }
 
-
     /**
      * Update an existing showtime.
      *
@@ -105,26 +98,33 @@ public class ShowtimeServiceImpl implements ShowtimeService {
 
         Showtime showtime = getShowtime(id);
 
-        // Nếu đổi movie thì kiểm tra trạng thái phim mới
-        if (request.getMovieId() != null && !request.getMovieId().equals(showtime.getMovie().getId())) {
-            Movie newMovie = movieRepository.findById(request.getMovieId())
-                    .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + request.getMovieId()));
-
-            if (!(newMovie.getStatus() == MovieStatus.COMING_SOON || newMovie.getStatus() == MovieStatus.NOW_SHOWING)) {
-                log.warn("[SHOWTIME SERVICE]: Cannot update showtime to movie ID {} with status {}", newMovie.getId(), newMovie.getStatus());
-                throw new BadRequestException("Cannot update showtime: Movie must be COMING_SOON or NOW_SHOWING");
-            }
-
-            showtime.setMovie(newMovie);
-        }
-
-        // Các update còn lại giữ nguyên logic cũ
+        // Kiểm tra screen nếu có thay đổi
         if (request.getScreenId() != null && !request.getScreenId().equals(showtime.getScreen().getId())) {
             Screen newScreen = screenRepository.findById(request.getScreenId())
                     .orElseThrow(() -> new NotFoundException("Screen not found with ID: " + request.getScreenId()));
             showtime.setScreen(newScreen);
         }
 
+        if (request.getMovieId() != null && !request.getMovieId().equals(showtime.getMovie().getId())) {
+            Movie newMovie = movieRepository.findById(request.getMovieId())
+                    .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + request.getMovieId()));
+            showtime.setMovie(newMovie);
+        }
+
+        // Kiểm tra trùng lịch (nếu có thay đổi ngày/giờ/screen)
+        if (request.getShowDate() != null || request.getStartTime() != null) {
+            Long screenId = request.getScreenId() != null ? request.getScreenId() : showtime.getScreen().getId();
+            var date = request.getShowDate() != null ? request.getShowDate() : showtime.getShowDate();
+            var startTime = request.getStartTime() != null ? request.getStartTime() : showtime.getStartTime();
+
+            boolean exists = showtimeRepository.existsByScreenIdAndShowDateAndStartTimeAndIdNot(
+                    screenId, date, startTime, id);
+            if (exists) {
+                throw new BadRequestException("Another showtime already exists for this screen/date/time");
+            }
+        }
+
+        // Update các trường có thay đổi
         if (request.getShowDate() != null) showtime.setShowDate(request.getShowDate());
         if (request.getStartTime() != null) showtime.setStartTime(request.getStartTime());
         if (request.getEndTime() != null) showtime.setEndTime(request.getEndTime());

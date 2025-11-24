@@ -4,7 +4,9 @@ import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.service.MailService;
 import com.trainning.movie_booking_system.service.OtpService;
 import com.trainning.movie_booking_system.service.RedisService;
-import com.trainning.movie_booking_system.untils.enums.OtpType;
+import com.trainning.movie_booking_system.utils.enums.OtpType;
+import com.trainning.movie_booking_system.entity.Account;
+import com.trainning.movie_booking_system.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,7 @@ public class OtpServiceImpl implements OtpService {
 
     private final RedisService redisService;
     private final MailService mailService;
+    private final AccountRepository accountRepository;
     private final SecureRandom random = new SecureRandom();
 
     @Value("${otp.ttl-minutes}")
@@ -58,7 +61,18 @@ public class OtpServiceImpl implements OtpService {
     public void sendOtp(String email, OtpType type) {
         log.info("Sending otp code for email: {}, type: {}", email, type.name().toLowerCase());
 
-        String otpKey = buildOtpKey(email, type);
+        if (type == null) {
+            throw new BadRequestException("OTP type is required");
+        }
+
+        if (type == OtpType.REGISTER) {
+            Account account = accountRepository.findByEmail(email)
+                    .orElseThrow(() -> new BadRequestException("Account not found"));
+            if (account.isEmailVerified()) {
+                throw new BadRequestException("Email already verified. Cannot resend REGISTER OTP.");
+            }
+        }
+
         String countKey = buildCountKey(email);
         String lastSendKey = buildLastSendKey(email, type);
 
