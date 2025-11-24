@@ -2,23 +2,20 @@ package com.trainning.movie_booking_system.service.impl;
 
 import com.trainning.movie_booking_system.dto.SeatInfo;
 import com.trainning.movie_booking_system.dto.request.Booking.BookingRequest;
+import com.trainning.movie_booking_system.dto.request.Voucher.ValidateVoucherRequest;
 import com.trainning.movie_booking_system.dto.response.Booking.BookingResponse;
 import com.trainning.movie_booking_system.dto.response.System.PageResponse;
-import com.trainning.movie_booking_system.entity.Booking;
-import com.trainning.movie_booking_system.entity.BookingSeat;
-import com.trainning.movie_booking_system.entity.Seat;
-import com.trainning.movie_booking_system.entity.Showtime;
+import com.trainning.movie_booking_system.entity.*;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.ConflictException;
 import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.helper.redis.RedisLockService;
 import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
-import com.trainning.movie_booking_system.repository.BookingRepository;
-import com.trainning.movie_booking_system.repository.BookingSeatRepository;
-import com.trainning.movie_booking_system.repository.SeatRepository;
-import com.trainning.movie_booking_system.repository.ShowtimeRepository;
+import com.trainning.movie_booking_system.mapper.BookingMapper;
+import com.trainning.movie_booking_system.repository.*;
 import com.trainning.movie_booking_system.security.SecurityUtils;
 import com.trainning.movie_booking_system.service.BookingService;
+import com.trainning.movie_booking_system.service.IVoucherService;
 import com.trainning.movie_booking_system.untils.enums.BookingStatus;
 import com.trainning.movie_booking_system.untils.enums.SeatType;
 import jakarta.transaction.Transactional;
@@ -26,43 +23,30 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import static com.trainning.movie_booking_system.mapper.BookingMapper.toResponse;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
 
+    private final BookingRepository bookingRepository;
     private final BookingSeatRepository bookingSeatRepository;
     private final SeatRepository seatRepository;
-    private final BookingRepository bookingRepository;
     private final ShowtimeRepository showtimeRepository;
+    private final VoucherRepository voucherRepository;
+    private final IVoucherService voucherService;
+    private final BookingMapper bookingMapper;
     private final RedisLockService redisLockService;
     private final SeatDomainService seatClient;
 
-    /**
-     * Create a new booking
-     * Flow:
-     * 1. Validate input & showtime exists
-     * 2. Pre-check: Verify seats held by current user
-     * 3. Get seat infos for price calculation
-     * 4. Acquire distributed locks (sorted order to prevent deadlock)
-     * 5. Re-verify holds under lock (TOCTOU prevention)
-     * 6. Create booking transaction in DB
-     * 7. Consume Redis holds (seats now persisted in DB)
-     * 8. Release locks in finally block
-     *
-     * @param request the booking request data
-     * @return the created booking response
-     */
     @Override
     public BookingResponse create(BookingRequest request) {
         log.info("[BOOKING] Create booking request: {}", request);
@@ -70,54 +54,120 @@ public class BookingServiceImpl implements BookingService {
         var currentUser = SecurityUtils.getCurrentUserDetails();
         Long userId = currentUser.getAccount().getId();
 
-        // ===== 1. Validate input =====
         if (CollectionUtils.isEmpty(request.getSeatIds())) {
             throw new BadRequestException("Seat list must not be empty");
         }
 
-        // ===== 2. Validate showtime exists =====
+        // 1. Validate showtime exists
         Showtime showtime = showtimeRepository.findById(request.getShowtimeId())
-                .orElseThrow(() -> new NotFoundException("Showtime not found with ID: " + request.getShowtimeId()));
+                .orElseThrow(() -> new NotFoundException("Showtime not found: " + request.getShowtimeId()));
         validateShowTime(showtime);
 
-        // ===== 3. Verify seats are held by current user (pre-check) =====
+        // 2. Check seats held by user
         seatClient.assertHeldByUser(request.getShowtimeId(), request.getSeatIds(), userId);
 
-        // ===== 4. Get seat infos for price calculation =====
+        // 3. Get seat info for price calculation
         List<SeatInfo> seatInfos = seatClient.getSeatInfos(request.getSeatIds());
 
-        // ===== 5. Lock từng ghế riêng lẻ (tránh deadlock) =====
-        // Sort seats để đảm bảo lock order nhất quán
+        // 4. Acquire distributed locks
         List<Long> sortedSeatIds = request.getSeatIds().stream().sorted().toList();
         List<Long> lockedSeats = new ArrayList<>();
-
         try {
-            // Acquire locks
             for (Long seatId : sortedSeatIds) {
                 if (!redisLockService.tryLockSeat(request.getShowtimeId(), seatId, 30, TimeUnit.SECONDS)) {
-                    throw new ConflictException(
-                        "Không thể lock ghế %d. Vui lòng thử lại.".formatted(seatId)
-                    );
+                    throw new ConflictException("Cannot lock seat %d. Please try again.".formatted(seatId));
                 }
                 lockedSeats.add(seatId);
             }
 
-            // ===== 6. Re-verify holds under lock (tránh TOCTOU) =====
+            // 5. Re-verify holds under lock
             seatClient.assertHeldByUser(request.getShowtimeId(), request.getSeatIds(), userId);
 
-            // ===== 7. Create booking in transaction =====
-            BookingResponse response = createBookingTransaction(showtime, seatInfos, request, userId);
+            // 6. Tính tổng tiền trước
+            BigDecimal totalPrice = calculateTotalPrice(seatInfos, showtime);
 
-            // ===== 8. CRITICAL: Consume hold to booked =====
+            // 7. Tạo booking pending trước khi validate voucher
+            Booking booking = Booking.builder()
+                    .account(currentUser.getAccount())
+                    .showtime(showtime)
+                    .status(BookingStatus.PENDING_PAYMENT)
+                    .expiresAt(LocalDateTime.now().plusMinutes(15))
+                    .totalPrice(totalPrice)
+                    .build();
+            bookingRepository.save(booking);
+
+            // 8. Xử lý voucher nếu có
+            Voucher voucher = null;
+            BigDecimal discount = BigDecimal.ZERO;
+
+            // Chỉ xử lý nếu voucherId được cung cấp và không rỗng
+            if (request.getVoucherId() != null && !request.getVoucherId().isEmpty()) {
+                Long voucherId;
+                try {
+                    voucherId = Long.parseLong(request.getVoucherId());
+                } catch (NumberFormatException e) {
+                    throw new BadRequestException("Voucher ID must be a number: " + request.getVoucherId());
+                }
+
+                voucher = voucherRepository.findById(voucherId)
+                        .orElseThrow(() -> new NotFoundException("Voucher not found: " + voucherId));
+
+                // Tạo ValidateVoucherRequest với bookingAmount = tổng tiền trước khi giảm
+                ValidateVoucherRequest validateRequest = ValidateVoucherRequest.builder()
+                        .voucherCode(voucher.getCode())
+                        .bookingId(booking.getId())
+                        .bookingAmount(totalPrice)
+                        .build();
+
+                var validationResult = voucherService.validateVoucher(validateRequest, userId);
+                discount = validationResult.getDiscountAmount() != null ? validationResult.getDiscountAmount() : BigDecimal.ZERO;
+
+                // Áp dụng voucher cho booking
+                booking.setVoucher(voucher);
+                booking.setDiscountAmount(discount);
+                booking.setFinalAmount(totalPrice.subtract(discount).max(BigDecimal.ZERO));
+
+            } else {
+                booking.setFinalAmount(totalPrice);
+            }
+
+// Lưu booking sau khi áp dụng voucher/không có voucher
+            bookingRepository.save(booking);
+
+            // 9. Tạo bookingSeats
+            Map<Long, Seat> seatMap = seatRepository.findAllById(
+                    seatInfos.stream().map(SeatInfo::getSeatId).toList()
+            ).stream().collect(Collectors.toMap(Seat::getId, Function.identity()));
+
+            List<BookingSeat> bookingSeats = new ArrayList<>();
+            for (SeatInfo info : seatInfos) {
+                Seat seat = seatMap.get(info.getSeatId());
+
+                BigDecimal multiplier = info.getSeatType() == SeatType.VIP ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
+                BigDecimal price = showtime.getPrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+
+                bookingSeats.add(BookingSeat.builder()
+                        .booking(booking)
+                        .seat(seat)
+                        .price(price)
+                        .seatNumber(seat.getSeatNumber())
+                        .rowLabel(seat.getRowLabel())
+                        .seatType(seat.getSeatType())
+                        .build());
+            }
+            bookingSeatRepository.saveAll(bookingSeats);
+            booking.setBookingSeats(bookingSeats);
+
+            // 10. Consume Redis hold
             seatClient.consumeHoldToBooked(request.getShowtimeId(), request.getSeatIds());
 
-            log.info("[BOOKING] Successfully created booking ID {} for user {}",
-                    response.getId(), userId);
+            log.info("[BOOKING] Successfully created booking ID {} for user {}", booking.getId(), userId);
 
-            return response;
+            // 11. Return response
+            return bookingMapper.toResponse(booking);
 
         } finally {
-            // ===== 9. ALWAYS release locks =====
+            // 12. Release locks
             for (Long seatId : lockedSeats) {
                 redisLockService.releaseSeatLock(request.getShowtimeId(), seatId);
             }
@@ -125,172 +175,119 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    /**
-     * Transactional method để persist booking vào DB
-     * QUAN TRỌNG: Phải check DB seats đã booked cho ĐÚNG showtime này
-     */
+
     @Transactional
-    protected BookingResponse createBookingTransaction(
+    protected Booking createBookingTransaction(
             Showtime showtime,
             List<SeatInfo> seatInfos,
             BookingRequest request,
-            Long userId) {
-
-        // Check ghế đã được booking trong DB cho showtime này
-        // (PENDING_PAYMENT hoặc CONFIRMED)
+            Long userId,
+            Voucher voucher,
+            BigDecimal discount
+    ) {
+        // Check DB booked seats to prevent race condition
         List<Long> bookedSeats = bookingSeatRepository.findBookedSeatIds(
                 request.getShowtimeId(),
                 List.of(BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED),
                 request.getSeatIds()
         );
         if (!bookedSeats.isEmpty()) {
-            throw new ConflictException(
-                "Ghế đã được đặt trong DB: %s. Có thể do race condition.".formatted(bookedSeats)
-            );
+            throw new ConflictException("Seats already booked: %s".formatted(bookedSeats));
         }
 
-        // Get account from SecurityContext
         var account = SecurityUtils.getCurrentUserDetails().account();
 
-        var booking = Booking.builder()
+        // Build booking entity
+        Booking booking = Booking.builder()
                 .account(account)
                 .showtime(showtime)
+                .voucher(voucher)
                 .status(BookingStatus.PENDING_PAYMENT)
-                .expiresAt(LocalDateTime.now().plusMinutes(15))  // Expire after 15 minutes
+                .expiresAt(LocalDateTime.now().plusMinutes(15))
                 .build();
 
-        var seatIdToEntity = seatRepository.findAllById(
+        Map<Long, Seat> seatMap = seatRepository.findAllById(
                 seatInfos.stream().map(SeatInfo::getSeatId).toList()
         ).stream().collect(Collectors.toMap(Seat::getId, Function.identity()));
 
-        var bookingSeats = new ArrayList<BookingSeat>();
-        BigDecimal total = BigDecimal.ZERO;
+        List<BookingSeat> bookingSeats = new ArrayList<>();
+        BigDecimal totalPrice = BigDecimal.ZERO;
+
         for (SeatInfo info : seatInfos) {
-            Seat seat = seatIdToEntity.get(info.getSeatId());
-            
-            BigDecimal multiplier = (info.getSeatType() == SeatType.VIP) ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
+            Seat seat = seatMap.get(info.getSeatId());
+
+            BigDecimal multiplier = info.getSeatType() == SeatType.VIP ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
             BigDecimal price = showtime.getPrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
 
             bookingSeats.add(BookingSeat.builder()
                     .booking(booking)
                     .seat(seat)
                     .price(price)
-                    // Copy denormalized seat info for performance (avoid N+1 query)
                     .seatNumber(seat.getSeatNumber())
                     .rowLabel(seat.getRowLabel())
                     .seatType(seat.getSeatType())
                     .build());
-            total = total.add(price);
-        }
-        booking.setTotalPrice(total);
 
+            totalPrice = totalPrice.add(price);
+        }
+
+        // Apply discount
+        BigDecimal finalAmount = totalPrice.subtract(discount).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        booking.setTotalPrice(totalPrice);
+        booking.setDiscountAmount(discount);
+        booking.setFinalAmount(finalAmount);
+
+        // Persist booking
         bookingRepository.save(booking);
         bookingSeatRepository.saveAll(bookingSeats);
         booking.setBookingSeats(bookingSeats);
 
-        return toResponse(booking);
+        return booking;
     }
 
-    /**
-     * Update an existing booking - NOT SUPPORTED
-     * Booking should not be updated after creation
-     * User can only cancel via payment cancellation
-     *
-     * @param id      the ID of the booking to update
-     * @param request the updated booking request data
-     * @return the updated booking response
-     */
     @Override
     public BookingResponse update(Long id, BookingRequest request) {
-        throw new UnsupportedOperationException(
-            "Booking update is not supported. Please cancel and create a new booking."
-        );
+        throw new UnsupportedOperationException("Booking update is not supported.");
     }
 
-    /**
-     * Delete a booking by ID - NOT SUPPORTED
-     * Booking should not be deleted, only cancelled via payment flow
-     *
-     * @param id the ID of the booking to delete
-     */
     @Override
     public void delete(Long id) {
-        throw new UnsupportedOperationException(
-            "Booking deletion is not supported. Use payment cancellation instead."
-        );
+        throw new UnsupportedOperationException("Booking deletion is not supported. Use payment cancellation.");
     }
 
-    /**
-     * Get a booking by ID
-     *
-     * @param id the ID of the booking to retrieve
-     * @return the booking response
-     */
     @Override
     public BookingResponse getById(Long id) {
-        log.info("[BOOKING] Get booking by id: {}", id);
-
-        var booking = bookingRepository.findByIdWithSeats(id)
-                .orElseThrow(() -> new NotFoundException("Booking not found with ID: " + id));
-
-        return toResponse(booking);
+        Booking booking = bookingRepository.findByIdWithSeats(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+        return bookingMapper.toResponse(booking);
     }
 
-    /**
-     * Get all bookings with pagination
-     *
-     * @param pageNumber the page number to retrieve
-     * @param pageSize   the number of bookings per page
-     * @return a paginated response of bookings
-     */
     @Override
     public PageResponse<?> getAlls(int pageNumber, int pageSize) {
-        log.info("[BOOKING] Get all bookings: page={}, size={}", pageNumber, pageSize);
-        
-        // TODO: Implement pagination with proper sorting
-        // TODO: Add filters (by user, by showtime, by status, by date range)
-        
         throw new UnsupportedOperationException("Pagination not yet implemented");
     }
 
-    // ========== PRIVATE METHODS ========== //
-    
-    /**
-     * Validate showtime chưa bắt đầu và còn thời gian đặt vé
-     * 
-     * @param showtime Showtime cần validate
-     * @throws BadRequestException nếu showtime đã qua hoặc vượt cutoff time
-     */
+    // ===== PRIVATE HELPERS =====
     private void validateShowTime(Showtime showtime) {
         LocalDateTime now = LocalDateTime.now();
-        
-        // Combine show_date + start_time thành LocalDateTime
-        LocalDateTime showtimeStart = LocalDateTime.of(
-            showtime.getShowDate(),
-            showtime.getStartTime()
-        );
-        
-        // Rule 1: Không được book suất chiếu đã qua
+        LocalDateTime showtimeStart = LocalDateTime.of(showtime.getShowDate(), showtime.getStartTime());
+
         if (showtimeStart.isBefore(now)) {
-            log.warn("Attempt to book past showtime: showtimeId={}, showtimeStart={}, now={}", 
-                    showtime.getId(), showtimeStart, now);
-            throw new BadRequestException(
-                String.format("Cannot book for past showtime. Showtime was at %s", 
-                    showtimeStart)
-            );
+            throw new BadRequestException("Cannot book past showtime: %s".formatted(showtimeStart));
         }
-        
-        // Rule 2: Đóng booking 15 phút trước giờ chiếu
+
         LocalDateTime cutoffTime = showtimeStart.minusMinutes(15);
         if (now.isAfter(cutoffTime)) {
-            log.warn("Attempt to book within cutoff time: showtimeId={}, cutoffTime={}, now={}", 
-                    showtime.getId(), cutoffTime, now);
-            throw new BadRequestException(
-                String.format("Booking closes 15 minutes before showtime. Cutoff time was %s", 
-                    cutoffTime)
-            );
+            throw new BadRequestException("Booking closes 15 minutes before showtime. Cutoff: %s".formatted(cutoffTime));
         }
-        
-        log.debug("Showtime validation passed for showtime ID: {}", showtime.getId());
+    }
+    private BigDecimal calculateTotalPrice(List<SeatInfo> seatInfos, Showtime showtime) {
+        BigDecimal totalPrice = BigDecimal.ZERO;
+        for (SeatInfo info : seatInfos) {
+            BigDecimal multiplier = info.getSeatType() == SeatType.VIP ? BigDecimal.valueOf(1.3) : BigDecimal.ONE;
+            BigDecimal price = showtime.getPrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+            totalPrice = totalPrice.add(price);
+        }
+        return totalPrice;
     }
 }

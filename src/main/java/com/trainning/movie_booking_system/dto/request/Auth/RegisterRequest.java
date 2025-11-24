@@ -2,6 +2,7 @@ package com.trainning.movie_booking_system.dto.request.Auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +24,10 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Password not blank")
-    @Size(min = 6, max = 100, message = "Password must be 6 characters long")
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+            message = "Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character"
+    )
     private String password;
 
     @NotBlank(message = "First name not blank")

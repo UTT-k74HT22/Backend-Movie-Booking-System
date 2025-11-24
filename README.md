@@ -5,6 +5,7 @@
 ## 📋 Mục lục
 
 - [Tổng quan](#-tổng-quan)
+- [📚 Tài liệu chính](#-tài-liệu-chính)
 - [Kiến trúc hệ thống](#-kiến-trúc-hệ-thống)
 - [Tech Stack](#-tech-stack)
 - [Cài đặt và chạy](#-cài-đặt-và-chạy)
@@ -14,7 +15,24 @@
 - [Flow nghiệp vụ](#-flow-nghiệp-vụ)
 - [Security](#-security)
 - [Testing](#-testing)
-- [Issues & Improvements](#-issues--improvements)
+
+---
+
+## 📚 Tài liệu chính
+
+> **✨ NEW:** Tất cả tài liệu đã được tổ chức lại trong thư mục `/docs/`
+
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Setup Guide](docs/01-SETUP-GUIDE.md) | 🚀 Cài đặt & chạy dự án |
+| 2 | [API Documentation](docs/02-API-DOCUMENTATION.md) | 📡 REST API endpoints *(Coming soon)* |
+| 3 | [Authentication](docs/03-AUTHENTICATION.md) | 🔐 JWT authentication guide |
+| 4 | [Booking Flow](docs/04-BOOKING-FLOW.md) | 🎫 **Booking flow (FIXED)** |
+| 5 | [Payment Flow](docs/05-PAYMENT-FLOW.md) | 💳 **Payment flow (FIXED)** |
+| 6 | [TODO & Improvements](docs/06-TODO.md) | ✅ Pending tasks |
+| 7 | [Testing Guide](docs/07-TESTING-GUIDE.md) | 🧪 Testing strategies |
+
+**📖 Start here:** [Documentation Index](docs/README.md)
 
 ---
 
@@ -790,8 +808,11 @@ Nếu gặp vấn đề, vui lòng tạo issue tại: [GitHub Issues](https://gi
 ---
 
 **⚡️ Next Steps:**
-1. ✅ Review toàn bộ README
-2. 📖 Đọc [FLOWS.md](./FLOWS.md) để hiểu chi tiết các flows
-3. 📊 Xem [SEQUENCE_DIAGRAMS.md](./SEQUENCE_DIAGRAMS.md) để hiểu luồng xử lý
-4. 🐛 Đọc [ISSUES.md](./ISSUES.md) để biết các vấn đề cần fix
-5. 🧪 Import Postman collection để test API
+1. ✅ Read [Documentation Index](docs/README.md) for organized guides
+2. � Follow [Setup Guide](docs/01-SETUP-GUIDE.md) to run the project
+3. 🎫 Understand [Booking Flow](docs/04-BOOKING-FLOW.md) - **Fixed with concurrency control**
+4. � Understand [Payment Flow](docs/05-PAYMENT-FLOW.md) - **Fixed with idempotency**
+5. ✅ Check [TODO List](docs/06-TODO.md) for pending improvements
+6. 🧪 Import Postman collection to test APIs
+
+**🗂️ Old docs archived:** See [.archive/README.md](.archive/README.md)

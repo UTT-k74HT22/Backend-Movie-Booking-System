@@ -3,18 +3,21 @@ package com.trainning.movie_booking_system.controller;
 import com.trainning.movie_booking_system.dto.request.Booking.BookingRequest;
 import com.trainning.movie_booking_system.dto.response.System.BaseResponse;
 import com.trainning.movie_booking_system.service.BookingService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
+@SecurityRequirement(name = "bearerAuth")
 public class BookingController {
 
     private final BookingService bookingService;
@@ -22,6 +25,8 @@ public class BookingController {
     /**
      * Create a new booking
      * Sau khi tạo thành công, user cần redirect sang payment gateway
+     * 
+     * REQUIRES AUTHENTICATION - User must be logged in
      *
      * @param request the booking request data
      * @return response entity with created booking
@@ -31,7 +36,7 @@ public class BookingController {
         log.info("[BOOKING] Create request: {}", request);
         var booking = bookingService.create(request);
 
-        // TODO: Frontend cần redirect user sang /api/payments/create/{bookingId}
+        // TODO: Frontend cần redirect user sang /api/v1/bookings/{bookingId}/payment
         log.info("[BOOKING] Booking {} created. Status: PENDING_PAYMENT. User needs to complete payment within 15 minutes.",
                 booking.getId());
 

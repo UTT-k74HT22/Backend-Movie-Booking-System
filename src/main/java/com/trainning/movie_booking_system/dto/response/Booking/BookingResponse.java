@@ -13,7 +13,11 @@ public class BookingResponse {
     private Long id;
     private Long accountId;
     private Long showtimeId;
+    private Long voucherId;
+    private String voucherCode;
     private BigDecimal totalPrice;
+    private BigDecimal discountAmount;
+    private BigDecimal finalAmount;
     private BookingStatus status;
     private LocalDateTime bookingDate;
     private List<BookingSeatResponse> seats;

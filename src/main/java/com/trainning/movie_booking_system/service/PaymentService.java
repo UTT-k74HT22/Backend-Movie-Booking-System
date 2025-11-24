@@ -2,10 +2,10 @@ package com.trainning.movie_booking_system.service;
 
 import com.trainning.movie_booking_system.dto.request.Payment.PaymentRequest;
 import com.trainning.movie_booking_system.dto.response.Payment.PaymentResponse;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Service xử lý payment cho booking
- * TODO: Triển khai integration với Payment Gateway (VNPay, MoMo, Stripe, etc.)
  */
 public interface PaymentService {
 
@@ -14,17 +14,24 @@ public interface PaymentService {
      *
      * @param bookingId ID của booking cần thanh toán
      * @return Payment URL để redirect
-     * TODO: Implement payment gateway integration
      */
     String createPaymentUrl(Long bookingId);
 
     /**
-     * Xử lý callback từ Payment Gateway sau khi user thanh toán
+     * Xử lý VNPay return callback
+     *
+     * @param request HttpServletRequest chứa VNPay params
+     * @return Payment response với status
+     */
+    PaymentResponse handleVNPayReturn(HttpServletRequest request);
+
+    /**
+     * Xử lý callback từ Payment Gateway sau khi user thanh toán (DEPRECATED)
      *
      * @param request Payment callback data từ gateway
      * @return Payment response với trạng thái
-     * TODO: Verify signature, update booking status
      */
+    @Deprecated
     PaymentResponse handlePaymentCallback(PaymentRequest request);
 
     /**
@@ -32,7 +39,6 @@ public interface PaymentService {
      *
      * @param bookingId ID của booking
      * @return Payment status
-     * TODO: Query payment gateway để check status
      */
     String verifyPaymentStatus(Long bookingId);
 
@@ -40,8 +46,6 @@ public interface PaymentService {
      * Cancel payment và update booking status
      *
      * @param bookingId ID của booking
-     * TODO: Handle payment cancellation, release seats
      */
     void cancelPayment(Long bookingId);
 }
-
