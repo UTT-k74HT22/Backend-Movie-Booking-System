@@ -4,11 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Redis distributed lock service với UUID để tránh unlock nhầm
+ * Hỗ trợ lock theo seat, tránh race condition
  */
 @Service
 @RequiredArgsConstructor
@@ -21,10 +23,10 @@ public class RedisLockService {
     /**
      * Thử lấy lock từ Redis với unique lock owner
      *
-     * @param lockKey   Key để lock (ví dụ: "seatLock:{showtimeId}:{seatId}")
-     * @param ttl       Thời gian khóa sẽ tồn tại
+     * @param lockKey   Key để lock (ví dụ: "seat:lock:{showtimeId}:{seatId}")
+     * @param ttl       Thời gian khóa tồn tại
      * @param timeUnit  Đơn vị thời gian
-     * @return true nếu lấy được lock, false nếu không
+     * @return true nếu lấy được lock
      */
     public boolean tryLock(String lockKey, long ttl, TimeUnit timeUnit) {
         String lockValue = UUID.randomUUID().toString();
@@ -42,8 +44,6 @@ public class RedisLockService {
 
     /**
      * Giải phóng lock - chỉ unlock nếu là owner
-     *
-     * @param lockKey Key của lock
      */
     public void releaseLock(String lockKey) {
         try {
@@ -63,7 +63,7 @@ public class RedisLockService {
     }
 
     /**
-     * Lock theo từng seat riêng lẻ - tránh deadlock
+     * Lock theo seat
      */
     public boolean tryLockSeat(Long showtimeId, Long seatId, long ttl, TimeUnit timeUnit) {
         String lockKey = "seat:lock:%d:%d".formatted(showtimeId, seatId);
@@ -77,5 +77,15 @@ public class RedisLockService {
         String lockKey = "seat:lock:%d:%d".formatted(showtimeId, seatId);
         releaseLock(lockKey);
     }
-}
 
+    /**
+     * Optional: Retry lock với timeout
+     */
+    public boolean tryLockWithRetry(String lockKey, long ttl, TimeUnit timeUnit, int maxRetry, long sleepMillis) {
+        for (int i = 0; i < maxRetry; i++) {
+            if (tryLock(lockKey, ttl, timeUnit)) return true;
+            try { Thread.sleep(sleepMillis); } catch (InterruptedException ignored) {}
+        }
+        return false;
+    }
+}
