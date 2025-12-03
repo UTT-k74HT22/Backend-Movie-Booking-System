@@ -75,3 +75,4 @@ public class Movie extends BaseEntity {
     @Column(nullable = false, length = 20)
     private MovieStatus status;
 }
+

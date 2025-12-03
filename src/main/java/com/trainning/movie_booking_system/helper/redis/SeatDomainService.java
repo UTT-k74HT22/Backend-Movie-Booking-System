@@ -1,153 +1,174 @@
 package com.trainning.movie_booking_system.helper.redis;
 
 import com.trainning.movie_booking_system.dto.SeatInfo;
+import com.trainning.movie_booking_system.entity.Seat;
 import com.trainning.movie_booking_system.exception.BadRequestException;
 import com.trainning.movie_booking_system.exception.ConflictException;
+import com.trainning.movie_booking_system.exception.NotFoundException;
 import com.trainning.movie_booking_system.repository.SeatRepository;
+import com.trainning.movie_booking_system.utils.enums.SeatStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 
 /**
- * Service quản lý hold/release seats sử dụng Redis
- * Đảm bảo atomic operations và tránh race condition
+ * Service quản lý hold/release seats sử dụng Redis và DB đồng bộ trạng thái ghế
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class SeatDomainService {
+
     private final StringRedisTemplate redis;
     private final SeatRepository seatRepository;
+    private final ShowtimeRepository showtimeRepository;
 
     private String holdKey(Long showtimeId, Long seatId) {
         return "hold:%d:%d".formatted(showtimeId, seatId);
     }
+    private void validateShowtime(Long showtimeId) {
+        var showtimeOpt = showtimeRepository.findById(showtimeId);
+        if (showtimeOpt.isEmpty()) {
+            throw new NotFoundException("Showtime not found: " + showtimeId);
+        }
+
+        var showtime = showtimeOpt.get();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime showtimeStart = LocalDateTime.of(showtime.getShowDate(), showtime.getStartTime());
+
+        if (showtimeStart.isBefore(now)) {
+            throw new BadRequestException("Cannot hold seat. Showtime %s has already started.".formatted(showtimeStart));
+        }
+
+        LocalDateTime cutoffTime = showtimeStart.minusMinutes(15); // hoặc thời gian cutoff bạn muốn
+        if (now.isAfter(cutoffTime)) {
+            throw new BadRequestException("Cannot hold seat. Booking closes 15 minutes before showtime. Cutoff: %s".formatted(cutoffTime));
+        }
+    }
 
     /**
-     * Hold seats ATOMIC - dùng SETNX để tránh race condition
-     * Nếu fail 1 ghế thì rollback tất cả
+     * Hold seats ATOMIC - rollback nếu fail
      */
     public void holdSeats(Long showtimeId, List<Long> seatIds, Long userId, Duration ttl) {
-        log.info("[SEAT-HOLD] User {} attempting to hold seats {} for showtime {}",
-                userId, seatIds, showtimeId);
+        validateShowtime(showtimeId);
+        log.info("[SEAT-HOLD] User {} attempting to hold seats {} for showtime {}", userId, seatIds, showtimeId);
 
         List<Long> heldSeats = new ArrayList<>();
-
         try {
             for (Long seatId : seatIds) {
+                Seat seat = seatRepository.findById(seatId)
+                        .orElseThrow(() -> new NotFoundException("Seat not found: " + seatId));
+
+                if (seat.getStatus() != SeatStatus.AVAILABLE) {
+                    throw new ConflictException("Ghế %d hiện không khả dụng: %s".formatted(seatId, seat.getStatus()));
+                }
+
                 String key = holdKey(showtimeId, seatId);
                 String userIdStr = String.valueOf(userId);
 
-                // ATOMIC: SET if Not eXists
                 Boolean success = redis.opsForValue().setIfAbsent(key, userIdStr, ttl);
-
                 if (Boolean.TRUE.equals(success)) {
+                    // Cập nhật DB sang OCCUPIED
+                    seat.setStatus(SeatStatus.OCCUPIED);
+                    seatRepository.save(seat);
                     heldSeats.add(seatId);
                     log.debug("[SEAT-HOLD] Seat {} held successfully", seatId);
                 } else {
-                    // Check nếu chính user này đang hold (idempotent)
                     String currentOwner = redis.opsForValue().get(key);
                     if (userIdStr.equals(currentOwner)) {
-                        // Refresh TTL nếu user hold lại
                         redis.expire(key, ttl);
                         heldSeats.add(seatId);
-                        log.debug("[SEAT-HOLD] Seat {} already held by same user, refreshed TTL", seatId);
+                        log.debug("[SEAT-HOLD] Seat {} already held by same user, TTL refreshed", seatId);
                     } else {
-                        // Ghế đang được hold bởi user khác
-                        throw new ConflictException(
-                            "Ghế %d đang được giữ bởi người khác. Vui lòng chọn ghế khác.".formatted(seatId)
-                        );
+                        throw new ConflictException("Ghế %d đang được giữ bởi người khác.".formatted(seatId));
                     }
                 }
             }
             log.info("[SEAT-HOLD] Successfully held {} seats for user {}", heldSeats.size(), userId);
         } catch (Exception e) {
-            // Rollback: release tất cả ghế đã hold
             log.error("[SEAT-HOLD] Failed to hold seats, rolling back {} seats", heldSeats.size());
-            heldSeats.forEach(seatId -> redis.delete(holdKey(showtimeId, seatId)));
+            // Rollback Redis và DB
+            heldSeats.forEach(seatId -> {
+                redis.delete(holdKey(showtimeId, seatId));
+                Seat seat = seatRepository.findById(seatId).orElse(null);
+                if (seat != null && seat.getStatus() == SeatStatus.OCCUPIED) {
+                    seat.setStatus(SeatStatus.AVAILABLE);
+                    seatRepository.save(seat);
+                }
+            });
             throw e;
         }
     }
 
     /**
-     * Kiểm tra toàn bộ ghế đang được hold bởi user hiện tại (còn TTL)
-     * Phải gọi trước khi create booking để verify
-     */
-    public void assertHeldByUser(Long showtimeId, List<Long> seatIds, Long userId) {
-        log.debug("[SEAT-HOLD] Verifying {} seats held by user {}", seatIds.size(), userId);
-
-        for (Long seatId : seatIds) {
-            String key = holdKey(showtimeId, seatId);
-            String owner = redis.opsForValue().get(key);
-
-            if (owner == null) {
-                throw new ConflictException(
-                    "Ghế %d không còn được giữ (hết hạn hold). Vui lòng hold lại.".formatted(seatId)
-                );
-            }
-            if (!owner.equals(String.valueOf(userId))) {
-                throw new ConflictException(
-                    "Ghế %d đang được giữ bởi người khác. Không thể booking.".formatted(seatId)
-                );
-            }
-        }
-    }
-
-    /**
-     * Lấy thông tin ghế để tính giá (VIP/STANDARD)
-     */
-    public List<SeatInfo> getSeatInfos(List<Long> seatIds) {
-        var seats = seatRepository.findAllById(seatIds);
-        if (seats.size() != seatIds.size()) {
-            List<Long> foundIds = seats.stream().map(s -> s.getId()).toList();
-            List<Long> missingIds = seatIds.stream()
-                .filter(id -> !foundIds.contains(id))
-                .toList();
-            throw new BadRequestException(
-                "Ghế không tồn tại: %s".formatted(missingIds)
-            );
-        }
-        return seats.stream()
-            .map(s -> new SeatInfo(s.getId(), s.getSeatType()))
-            .toList();
-    }
-
-    /**
-     * Sau thanh toán thành công: xoá hold
-     * Ghế đã được persist vào DB (booking_seats table)
-     */
-    public void consumeHoldToBooked(Long showtimeId, List<Long> seatIds) {
-        log.info("[SEAT-HOLD] Consuming hold to booked for {} seats", seatIds.size());
-        seatIds.forEach(id -> {
-            String key = holdKey(showtimeId, id);
-            redis.delete(key);
-            log.debug("[SEAT-HOLD] Released hold for seat {} (now booked)", id);
-        });
-    }
-
-    /**
-     * Khi thanh toán fail/timeout/user cancel: xoá hold để nhả ghế
+     * Release held seats (cancel/timeout)
      */
     public void releaseHolds(Long showtimeId, List<Long> seatIds) {
         log.info("[SEAT-HOLD] Releasing hold for {} seats", seatIds.size());
         seatIds.forEach(id -> {
-            String key = holdKey(showtimeId, id);
-            redis.delete(key);
+            redis.delete(holdKey(showtimeId, id));
+            Seat seat = seatRepository.findById(id)
+                    .orElseThrow(() -> new NotFoundException("Seat not found: " + id));
+            if (seat.getStatus() == SeatStatus.OCCUPIED) {
+                seat.setStatus(SeatStatus.AVAILABLE);
+                seatRepository.save(seat);
+            }
             log.debug("[SEAT-HOLD] Released hold for seat {}", id);
         });
     }
 
     /**
-     * Check xem ghế có đang bị hold không (bất kể user nào)
+     * Verify seats held bởi user
      */
-    public boolean isSeatHeld(Long showtimeId, Long seatId) {
-        String key = holdKey(showtimeId, seatId);
-        return Boolean.TRUE.equals(redis.hasKey(key));
+    public void assertHeldByUser(Long showtimeId, List<Long> seatIds, Long userId) {
+        for (Long seatId : seatIds) {
+            String key = holdKey(showtimeId, seatId);
+            String owner = redis.opsForValue().get(key);
+            if (owner == null)
+                throw new ConflictException("Ghế %d không còn được giữ.".formatted(seatId));
+            if (!owner.equals(String.valueOf(userId)))
+                throw new ConflictException("Ghế %d đang được giữ bởi người khác.".formatted(seatId));
+        }
     }
 
+    /**
+     * Sau booking thành công: xoá hold và cập nhật trạng thái BOOKED
+     */
+    public void consumeHoldToBooked(Long showtimeId, List<Long> seatIds) {
+        log.info("[SEAT-HOLD] Booking confirmed for {} seats", seatIds.size());
+        seatIds.forEach(id -> {
+            redis.delete(holdKey(showtimeId, id));
+            Seat seat = seatRepository.findById(id)
+                    .orElseThrow(() -> new NotFoundException("Seat not found: " + id));
+            seat.setStatus(SeatStatus.BOOKED);
+            seatRepository.save(seat);
+            log.debug("[SEAT-HOLD] Seat {} marked as BOOKED", id);
+        });
+    }
+
+    /**
+     * Lấy thông tin ghế từ DB (seatType)
+     */
+    public List<SeatInfo> getSeatInfos(List<Long> seatIds) {
+        var seats = seatRepository.findAllById(seatIds);
+        if (seats.size() != seatIds.size()) {
+            List<Long> foundIds = seats.stream().map(Seat::getId).toList();
+            List<Long> missingIds = seatIds.stream().filter(id -> !foundIds.contains(id)).toList();
+            throw new BadRequestException("Ghế không tồn tại: %s".formatted(missingIds));
+        }
+        return seats.stream().map(s -> new SeatInfo(s.getId(), s.getSeatType())).toList();
+    }
+
+    /**
+     * Kiểm tra ghế có đang bị hold không
+     */
+    public boolean isSeatHeld(Long showtimeId, Long seatId) {
+        return Boolean.TRUE.equals(redis.hasKey(holdKey(showtimeId, seatId)));
+    }
 }

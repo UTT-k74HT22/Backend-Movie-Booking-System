@@ -11,7 +11,9 @@ server:
 spring:
   application:
     name: movie-booking
-
+  sql:
+    init:
+      mode: always
   # DATABASE CONFIGURATION
   datasource:
     url: jdbc:mysql://localhost:3306/movie_booking
@@ -21,6 +23,7 @@ spring:
 
   # JPA/HIBERNATE CONFIGURATION
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
       naming:

@@ -18,7 +18,15 @@ public class MovieRequest {
     @Positive(message = "Duration must be greater than 0")
     private Integer duration;
 
-    private String releaseDate; // ISO format (yyyy-MM-dd)
+    private String releaseDate;
+
+    // Thêm để FE biết thời gian bắt đầu / kết thúc lịch chiếu
+    private String screeningStartDate;
+    private String screeningEndDate;
+
+    //Thêm để FE biết giới hạn giờ chiếu
+    private String allowedStartTime;
+    private String allowedEndTime;
 
     private String screeningStartDate; // yyyy-MM-dd
     private String screeningEndDate;   // yyyy-MM-dd

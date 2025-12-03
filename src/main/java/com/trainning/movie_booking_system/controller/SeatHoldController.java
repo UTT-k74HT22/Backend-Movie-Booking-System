@@ -9,6 +9,7 @@ import com.trainning.movie_booking_system.helper.redis.SeatDomainService;
 import com.trainning.movie_booking_system.repository.SeatRepository;
 import com.trainning.movie_booking_system.repository.ShowtimeRepository;
 import com.trainning.movie_booking_system.security.SecurityUtils;
+import com.trainning.movie_booking_system.service.SeatHoldService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,11 +32,8 @@ import java.util.List;
 @Validated
 @Slf4j
 public class SeatHoldController {
-    
-    private final SeatDomainService seatDomainService;
-    private final ShowtimeRepository showtimeRepository;
-    private final SeatRepository seatRepository;
 
+    private final SeatHoldService seatHoldService;
     /**
      * Hold seats tạm thời (default 120s)
      * User phải gọi endpoint này TRƯỚC KHI create booking
@@ -48,39 +46,10 @@ public class SeatHoldController {
      */
     @PostMapping
     public ResponseEntity<?> hold(@RequestBody @Valid HoldSeatsRequest req) {
-        log.info("[SEAT-HOLD] Hold request: {}", req);
-        
-        // Validate showtime exists
-        showtimeRepository.findById(req.getShowtimeId())
-                .orElseThrow(() -> new NotFoundException("Showtime not found with ID: " + req.getShowtimeId()));
-        
-        // Validate seats exist and belong to the showtime's screen
-        List<Seat> seats = seatRepository.findAllById(req.getSeatIds());
-        if (seats.size() != req.getSeatIds().size()) {
-            List<Long> foundIds = seats.stream().map(Seat::getId).toList();
-            List<Long> missingIds = req.getSeatIds().stream()
-                    .filter(id -> !foundIds.contains(id))
-                    .toList();
-            throw new BadRequestException("Seats not found: " + missingIds);
-        }
-        
         var userId = SecurityUtils.getCurrentUserDetails().getAccount().getId();
-        int ttlSec = req.getTtlSec() != null ? req.getTtlSec() : 120;
-        
-        seatDomainService.holdSeats(
-                req.getShowtimeId(), 
-                req.getSeatIds(), 
-                userId, 
-                Duration.ofSeconds(ttlSec)
-        );
-        
-        log.info("[SEAT-HOLD] User {} held {} seats for {}s", userId, req.getSeatIds().size(), ttlSec);
-        
-        return ResponseEntity.ok(BaseResponse.success(
-                null,
-                "Seats held successfully for %d seconds. Please create booking before timeout.".formatted(ttlSec)
-        ));
+        return ResponseEntity.ok(BaseResponse.success(seatHoldService.holdSeats(req, userId)));
     }
+
 
     /**
      * Release held seats manually
@@ -94,15 +63,7 @@ public class SeatHoldController {
      */
     @DeleteMapping
     public ResponseEntity<?> release(@RequestBody @Valid HoldSeatsRequest req) {
-        log.info("[SEAT-HOLD] Release request: {}", req);
-        
-        seatDomainService.releaseHolds(req.getShowtimeId(), req.getSeatIds());
-        
-        log.info("[SEAT-HOLD] Released {} seats for showtime {}", req.getSeatIds().size(), req.getShowtimeId());
-        
-        return ResponseEntity.ok(BaseResponse.success(
-                null,
-                "Seats released successfully"
-        ));
+        seatHoldService.releaseSeats(req);
+        return ResponseEntity.ok(BaseResponse.success(null, "Seats released successfully"));
     }
 }

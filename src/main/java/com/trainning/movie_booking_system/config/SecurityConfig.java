@@ -1,8 +1,16 @@
 package com.trainning.movie_booking_system.config;
 
+import com.trainning.movie_booking_system.entity.Account;
+import com.trainning.movie_booking_system.entity.AccountHasRole;
+import com.trainning.movie_booking_system.entity.Role;
+import com.trainning.movie_booking_system.repository.AccountRepository;
+import com.trainning.movie_booking_system.repository.RoleRepository;
 import com.trainning.movie_booking_system.security.CustomUserDetailsService;
 import com.trainning.movie_booking_system.security.JwtFilter;
+import com.trainning.movie_booking_system.utils.enums.RoleType;
+import com.trainning.movie_booking_system.utils.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,6 +31,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 @RequiredArgsConstructor
@@ -114,7 +123,49 @@ public class SecurityConfig {
 
         return http.build();
     }
-
+//    @Bean
+//    CommandLineRunner createAdminAccount(AccountRepository accountRepo,
+//                                         RoleRepository roleRepo,
+//                                         PasswordEncoder encoder) {
+//        return args -> {
+//            //  Tạo role ADMIN nếu chưa có
+//            if (!roleRepo.existsByName(RoleType.ADMIN)) {
+//                roleRepo.save(Role.builder()
+//                        .name(RoleType.ADMIN)
+//                        .description(RoleType.ADMIN.getDescription())
+//                        .build());
+//            }
+//
+//            //  Nếu đã có account admin rồi thì bỏ qua
+//            if (accountRepo.existsByUsername("admin")) {
+//                return;
+//            }
+//
+//            // 3️⃣ Tạo account admin
+//            Account admin = Account.builder()
+//                    .username("admin")
+//                    .email("admin@moviebooking.com")
+//                    .password(encoder.encode("admin123"))
+//                    .status(UserStatus.ACTIVE)
+//                    .emailVerified(true)
+//                    .build();
+//
+//            //  Lấy role ADMIN
+//            Role adminRole = roleRepo.findByName(RoleType.ADMIN)
+//                    .orElseThrow(() -> new IllegalStateException("Role ADMIN not found"));
+//
+//            //  Tạo bản ghi AccountHasRole (join bảng)
+//            AccountHasRole link = AccountHasRole.builder()
+//                    .account(admin)
+//                    .role(adminRole)
+//                    .build();
+//
+//            admin.getAccountRoles().add(link);
+//
+//            //  Lưu account (cascade sẽ lưu luôn account_roles)
+//            accountRepo.save(admin);
+//        };
+//    }
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
