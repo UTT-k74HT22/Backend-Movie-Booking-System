@@ -17,9 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+
 import static com.trainning.movie_booking_system.mapper.MovieMapper.toMovieResponse;
 
 @Service
@@ -29,46 +32,48 @@ public class MovieServiceImpl implements MovieService {
 
     private final MovieRepository movieRepository;
 
-    /**
-     * Create a new movie
-     *
-     * @param request the movie request
-     * @return the created movie response
-     */
     @Transactional
     @Override
     public MovieResponse create(MovieRequest request) {
         log.info("[MOVIE SERVICE] - Create movie request: {}", request);
 
         if (movieRepository.existsByTitle(request.getTitle().trim())) {
-            log.error("[MOVIE SERVICE] - Movie with title '{}' already exists", request.getTitle());
             throw new BadRequestException("Movie with the given title already exists");
         }
 
+        // Parse releaseDate
         LocalDate releaseDate = null;
         if (request.getReleaseDate() != null && !request.getReleaseDate().isBlank()) {
-            try {
-                releaseDate = LocalDate.parse(request.getReleaseDate().trim());
-            } catch (DateTimeParseException e) {
-                log.error("[MOVIE SERVICE] - Invalid release date: {}", request.getReleaseDate());
-                throw new BadRequestException("Invalid release date format. Expected yyyy-MM-dd");
-            }
+            releaseDate = LocalDate.parse(request.getReleaseDate().trim());
         }
 
-        Movie movie = buildMovie(request, releaseDate);
+        // Parse screeningStartDate and screeningEndDate
+        LocalDate screeningStartDate = null;
+        LocalDate screeningEndDate = null;
+        if (request.getScreeningStartDate() != null && !request.getScreeningStartDate().isBlank()) {
+            screeningStartDate = LocalDate.parse(request.getScreeningStartDate().trim());
+        }
+        if (request.getScreeningEndDate() != null && !request.getScreeningEndDate().isBlank()) {
+            screeningEndDate = LocalDate.parse(request.getScreeningEndDate().trim());
+        }
+
+        // Parse allowedStartTime and allowedEndTime
+        LocalTime allowedStartTime = null;
+        LocalTime allowedEndTime = null;
+        if (request.getAllowedStartTime() != null && !request.getAllowedStartTime().isBlank()) {
+            allowedStartTime = LocalTime.parse(request.getAllowedStartTime().trim());
+        }
+        if (request.getAllowedEndTime() != null && !request.getAllowedEndTime().isBlank()) {
+            allowedEndTime = LocalTime.parse(request.getAllowedEndTime().trim());
+        }
+
+        Movie movie = buildMovie(request, releaseDate, screeningStartDate, screeningEndDate, allowedStartTime, allowedEndTime);
         movieRepository.save(movie);
-        log.info("[MOVIE SERVICE] - Movie created successfully with ID: {}", movie.getId());
 
         return toMovieResponse(movie);
     }
 
-    /**
-     * Update an existing movie
-     *
-     * @param movieId the ID of the movie to update
-     * @param request the movie request
-     * @return the updated movie response
-     */
+
     @Transactional
     @Override
     public MovieResponse update(Long movieId, UpdateMovieRequest request) {
@@ -77,7 +82,6 @@ public class MovieServiceImpl implements MovieService {
         Movie movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
 
-        // Chỉ update khi có giá trị mới
         if (request.getTitle() != null && !request.getTitle().isBlank()) {
             if (!movie.getTitle().equalsIgnoreCase(request.getTitle().trim())
                     && movieRepository.existsByTitle(request.getTitle().trim())) {
@@ -85,55 +89,31 @@ public class MovieServiceImpl implements MovieService {
             }
             movie.setTitle(request.getTitle().trim());
         }
-        updateFiled(request, movie);
+
+        updateFields(request, movie);
         movieRepository.save(movie);
-        log.info("[MOVIE SERVICE] - Movie updated successfully: {}", movieId);
 
         return toMovieResponse(movie);
     }
 
-    /**
-     * Delete a movie by its ID
-     *
-     * @param movieId     the ID of the movie to delete
-     * @param movieStatus the status of the movie
-     */
     @Transactional
     @Override
     public void delete(Long movieId, MovieStatus movieStatus) {
-        log.info("MOVIE SERVICE] - Delete movie with ID: {}", movieId);
         Movie movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
-        movie.setStatus(MovieStatus.ENDED);
+        movie.setStatus(movieStatus != null ? movieStatus : MovieStatus.ENDED);
         movieRepository.save(movie);
     }
 
-    /**
-     * Get a movie by its ID
-     *
-     * @param movieId the ID of the movie to retrieve
-     * @return the movie response
-     */
     @Override
     public MovieResponse getById(Long movieId) {
-        log.info("[MOVIE SERVICE] - Get movie with ID: {}", movieId);
         Movie movie = movieRepository.findById(movieId)
                 .orElseThrow(() -> new NotFoundException("Movie not found with ID: " + movieId));
-
         return toMovieResponse(movie);
     }
 
-    /**
-     * Get all movies with pagination
-     *
-     * @param pageNumber the page number
-     * @param pageSize the size of the page
-     * @return a paginated response of movies
-     */
     @Override
     public PageResponse<?> getAll(int pageNumber, int pageSize) {
-        log.info("[MOVIE SERVICE] - Get all movies - Page: {}, Size: {}", pageNumber, pageSize);
-
         if (pageNumber < 0 || pageSize < 0) {
             throw new BadRequestException("Invalid PageNumber and PageSize");
         }
@@ -143,19 +123,19 @@ public class MovieServiceImpl implements MovieService {
         return PageResponse.of(movieResponse);
     }
 
-    /**
-     * Count total number of movies
-     *
-     * @return the total count of movies
-     */
     @Override
     public long countTotalMovies() {
-        log.info("[MOVIE SERVICE] - Counting total movies");
         return movieRepository.count();
     }
 
-    //====================================== Private methods =====================================//
-    private static Movie buildMovie(MovieRequest request, LocalDate releaseDate) {
+    //====================== PRIVATE METHODS ====================//
+
+    private static Movie buildMovie(MovieRequest request,
+                                     LocalDate releaseDate,
+                                     LocalDate screeningStartDate,
+                                     LocalDate screeningEndDate,
+                                     LocalTime allowedStartTime,
+                                     LocalTime allowedEndTime) {
         return Movie.builder()
                 .title(request.getTitle().trim())
                 .description(request.getDescription())
@@ -163,6 +143,10 @@ public class MovieServiceImpl implements MovieService {
                 .language(request.getLanguage())
                 .duration(request.getDuration())
                 .releaseDate(releaseDate)
+                .screeningStartDate(screeningStartDate)
+                .screeningEndDate(screeningEndDate)
+                .allowedStartTime(allowedStartTime)
+                .allowedEndTime(allowedEndTime)
                 .posterUrl(request.getPosterUrl())
                 .trailerUrl(request.getTrailerUrl())
                 .rating(request.getRating() != null ? BigDecimal.valueOf(request.getRating()) : null)
@@ -170,38 +154,38 @@ public class MovieServiceImpl implements MovieService {
                 .build();
     }
 
-    private static void updateFiled(UpdateMovieRequest request, Movie movie) {
-        if (request.getDescription() != null)
-            movie.setDescription(request.getDescription());
 
-        if (request.getDuration() != null)
-            movie.setDuration(request.getDuration());
-
-        if (request.getReleaseDate() != null && !request.getReleaseDate().isBlank()) {
-            try {
-                movie.setReleaseDate(LocalDate.parse(request.getReleaseDate().trim()));
-            } catch (DateTimeParseException e) {
-                throw new BadRequestException("Invalid release date format. Expected yyyy-MM-dd");
-            }
-        }
-
-        if (request.getPosterUrl() != null)
-            movie.setPosterUrl(request.getPosterUrl());
-
-        if (request.getTrailerUrl() != null)
-            movie.setTrailerUrl(request.getTrailerUrl());
-
-        if (request.getRating() != null)
-            movie.setRating(BigDecimal.valueOf(request.getRating()));
-
-        if (request.getGenre() != null)
-            movie.setGenre(request.getGenre());
-
-        if (request.getLanguage() != null)
-            movie.setLanguage(request.getLanguage());
-
-        if (request.getStatus() != null)
-            movie.setStatus(request.getStatus());
+    private static void updateFields(UpdateMovieRequest request, Movie movie) {
+        if (request.getDescription() != null) movie.setDescription(request.getDescription());
+        if (request.getDuration() != null) movie.setDuration(request.getDuration());
+        if (request.getReleaseDate() != null) movie.setReleaseDate(parseDate(request.getReleaseDate(), "releaseDate"));
+        if (request.getPosterUrl() != null) movie.setPosterUrl(request.getPosterUrl());
+        if (request.getTrailerUrl() != null) movie.setTrailerUrl(request.getTrailerUrl());
+        if (request.getRating() != null) movie.setRating(BigDecimal.valueOf(request.getRating()));
+        if (request.getGenre() != null) movie.setGenre(request.getGenre());
+        if (request.getLanguage() != null) movie.setLanguage(request.getLanguage());
+        if (request.getStatus() != null) movie.setStatus(request.getStatus());
+        if (request.getScreeningStartDate() != null) movie.setScreeningStartDate(parseDate(request.getScreeningStartDate(), "screeningStartDate"));
+        if (request.getScreeningEndDate() != null) movie.setScreeningEndDate(parseDate(request.getScreeningEndDate(), "screeningEndDate"));
+        if (request.getAllowedStartTime() != null) movie.setAllowedStartTime(parseTime(request.getAllowedStartTime(), "allowedStartTime"));
+        if (request.getAllowedEndTime() != null) movie.setAllowedEndTime(parseTime(request.getAllowedEndTime(), "allowedEndTime"));
     }
 
+    private static LocalDate parseDate(String dateStr, String fieldName) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        try {
+            return LocalDate.parse(dateStr.trim());
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException("Invalid " + fieldName + " format. Expected yyyy-MM-dd");
+        }
+    }
+
+    private static LocalTime parseTime(String timeStr, String fieldName) {
+        if (timeStr == null || timeStr.isBlank()) return null;
+        try {
+            return LocalTime.parse(timeStr.trim());
+        } catch (DateTimeParseException e) {
+            throw new BadRequestException("Invalid " + fieldName + " format. Expected HH:mm");
+        }
+    }
 }

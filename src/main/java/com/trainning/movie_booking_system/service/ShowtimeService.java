@@ -71,4 +71,8 @@ public interface ShowtimeService {
      * @return the total count of showtimes
      */
     long countShowtime();
+    /**
+     * Auto-generate showtimes for a movie in a screen based on allowed times
+     */
+    void autoGenerateShowtimes(Long movieId, Long screenId, LocalDate date, int bufferMinutes);
 }
