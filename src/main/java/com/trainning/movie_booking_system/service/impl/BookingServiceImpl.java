@@ -101,6 +101,10 @@ public class BookingServiceImpl implements BookingService {
             BigDecimal discount = BigDecimal.ZERO;
 
             // Chỉ xử lý nếu voucherId được cung cấp và không rỗng
+            String voucherIdStr = request.getVoucherId();
+            if(voucherIdStr != null ){
+                voucherIdStr = voucherIdStr.trim();
+            }
             if (request.getVoucherId() != null && !request.getVoucherId().isEmpty()) {
                 Long voucherId;
                 try {
@@ -128,7 +132,8 @@ public class BookingServiceImpl implements BookingService {
                 booking.setFinalAmount(totalPrice.subtract(discount).max(BigDecimal.ZERO));
 
             } else {
-                booking.setFinalAmount(totalPrice);
+                booking.setDiscountAmount(BigDecimal.ZERO);
+                booking.setFinalAmount(totalPrice.setScale(2, RoundingMode.HALF_UP));
             }
 
 // Lưu booking sau khi áp dụng voucher/không có voucher
