@@ -1,25 +1,27 @@
-# SERVER CONFIGURATION
+# Application configuration for Movie Booking System
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   error:
     include-message: always
     include-binding-errors: always
     include-stacktrace: on_param
     include-exception: false
 
-# SPRING CONFIGURATION
+#  Define application-specific properties
 spring:
+
+  #Define application name
   application:
     name: movie-booking
 
-  # DATABASE CONFIGURATION
+  # Database configuration
   datasource:
-    url: jdbc:mysql://localhost:3306/movie_booking
-    username: root
-    password: 123456789
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  # JPA/HIBERNATE CONFIGURATION
+  # JPA and Hibernate configuration
   jpa:
     hibernate:
       ddl-auto: update
@@ -37,75 +39,71 @@ spring:
         order_inserts: true
         order_updates: true
 
-  #Mail config
+  # Mail configuration
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: dohoan25112004@gmail.com
-    password: dxbu jqon lyrt tckw
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your_email@gmail.com}
+    password: ${MAIL_PASSWORD:your_app_password}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${MAIL_SMTP_AUTH:true}
           starttls:
-            enable: true
+            enable: ${MAIL_STARTTLS_ENABLE:true}
 
-  # JACKSON CONFIGURATION
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-    time-zone: Asia/Ho_Chi_Minh
-    default-property-inclusion: non_null
+  # Redis configuration
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
 
-  # MULTIPART FILE UPLOAD
+  # File upload configuration
   servlet:
     multipart:
       enabled: true
       max-file-size: 20MB
       max-request-size: 20MB
 
-  #Redis config
-  data:
-    redis:
-      host: localhost
-      port: 6379
-
-# CORS CONFIGURATION
+# CORS configuration
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
   allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
   allowed-headers: "*"
   allow-credentials: true
 
-# JWT CONFIGURATION
+
+# Security and JWT configuration
 jwt:
+  accessKey: ${JWT_ACCESS_KEY}
+  access-token-expiry-minutes: ${JWT_ACCESS_TOKEN_EXPIRY_MINUTES}
+  refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS}
   expiryMinutes: 5
   expiryDay: 14
-  accessKey: p1zs6HE4bebUL6aVjJhSEtj/Bp4rhQPK3vUR2gpcA06muNhYO77Z9kzb3U5sDXBkdpEZwECJfm0tNuDRiVu29g==
-  access-token-expiry-minutes: 30 #minutes
-  refresh-token-expiry-days: 1  #days
 
+# OTP configuration
 otp:
-  ttl-minutes: 5              # Thời gian sống của OTP (phút)
-  resend-limit-seconds: 60    # Thời gian giữa 2 lần gửi lại OTP (giây)
-  count-ttl-hours: 24         # Thời gian reset đếm số lần gửi (giờ)
-  max-send-per-day: 5         # Giới hạn gửi OTP tối đa mỗi ngày
-#Config OpenAPI DOCUMENTATION
+  ttl-minutes: ${OTP_TTL_MINUTES}
+  resend-limit-seconds: ${OTP_RESEND_LIMIT_SECONDS}
+  count-ttl-hours: ${OTP_COUNT_TTL_HOURS}
+  max-send-per-day: ${OTP_MAX_SEND_PER_DAY}
+
+# Swagger / OpenAPI configuration
 springdoc:
   api-docs:
     enabled: true
   swagger-ui:
     enabled: true
     url: /v3/api-docs/movie-booking-system
+
 openapi:
   service:
     api-docs: movie-booking-system
-    server: http://localhost:${server.port}
+    server: http://localhost:${SERVER_PORT}
     title: Movie Booking System
     version: 1.0.0
 
-
-# LOGGING CONFIGURATION
+# Logging configuration
 logging:
   level:
     root: INFO
@@ -115,15 +113,7 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %highlight(%-5level){ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=magenta} %cyan(%logger{36}) - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-
-  logback:
-    rollingpolicy:
-      clean-history-on-start: true
-
-# MANAGEMENT & ACTUATOR (Optional)
+# Actuator configuration
 management:
   endpoints:
     web:
@@ -133,17 +123,10 @@ management:
     health:
       show-details: when-authorized
 
+# VNPAY configuration
 vnpay:
-  tmnCode: ANBB2CT1
-  hashSecret: HV8WLKRENFNZP2ECO14M02RS4HM7E5KN
-  payUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  
-  # RETURN URL Configuration:
-  # - LOCAL TESTING (no frontend): http://localhost:8080/api/v1/payments/vnpay/callback
-  #   → VNPay redirects directly to backend, returns JSON
-  # - PRODUCTION (with frontend): https://yourfrontend.com/payment/result
-  #   → VNPay redirects to frontend, frontend calls /api/v1/payments/vnpay/verify with params
-  returnUrl: http://localhost:8080/api/v1/payments/vnpay/callback
-  
-  # IPN URL (webhook for async notification - optional)
-  ipnUrl: http://localhost:8080/api/v1/payments/webhook
+  tmnCode: ${VNPAY_TMNCODE}
+  hashSecret: ${VNPAY_HASH_SECRET}
+  payUrl: ${VNPAY_PAYURL}
+  returnUrl: ${VNPAY_RETURN_URL}
+  ipnUrl: ${VNPAY_IPN_URL}
